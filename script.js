@@ -4,6 +4,7 @@ const timerEl = document.getElementById("timer");
 const messageEl = document.getElementById("message");
 const shuffleBtn = document.getElementById("shuffleBtn");
 const resetBtn = document.getElementById("resetBtn");
+const solveBtn = document.getElementById("solveBtn");
 const sizeSelect = document.getElementById("sizeSelect");
 const previewImage = document.getElementById("previewImage");
 
@@ -16,6 +17,10 @@ let seconds = 0;
 let timerId = null;
 let started = false;
 let initialShuffledState = [];
+let shuffleHistory = [];
+let moveHistory = [];
+let isAutoSolving = false;
+let solveRunId = 0;
 
 function buildSolvedState(n) {
   return [...Array(n * n - 1).keys()].map((i) => i + 1).concat(0);
@@ -71,12 +76,29 @@ function stopTimer() {
   timerId = null;
 }
 
-function moveTile(index) {
+function setControlsDisabled(disabled) {
+  shuffleBtn.disabled = disabled;
+  resetBtn.disabled = disabled;
+  sizeSelect.disabled = disabled;
+  solveBtn.disabled = disabled;
+}
+
+function moveTile(index, options = {}) {
+  const {
+    trackHistory = true,
+    updateMessage = true,
+  } = options;
+
+  if (isAutoSolving && trackHistory) return false;
   if (!canMove(index)) return false;
 
+  const movedValue = tiles[index];
   const emptyIndex = getEmptyIndex();
   [tiles[index], tiles[emptyIndex]] = [tiles[emptyIndex], tiles[index]];
   moves += 1;
+  if (trackHistory) {
+    moveHistory.push(movedValue);
+  }
 
   if (!started) {
     started = true;
@@ -85,10 +107,10 @@ function moveTile(index) {
 
   renderBoard();
 
-  if (isSolved()) {
+  if (updateMessage && isSolved()) {
     stopTimer();
     messageEl.textContent = `完成！共 ${moves} 步`;
-  } else {
+  } else if (updateMessage) {
     messageEl.textContent = "";
   }
 
@@ -137,6 +159,7 @@ function renderBoard() {
 
 function shuffleByLegalMoves(steps = 200) {
   tiles = buildSolvedState(size);
+  shuffleHistory = [];
   let emptyIndex = getEmptyIndex();
   let previousIndex = -1;
 
@@ -144,6 +167,7 @@ function shuffleByLegalMoves(steps = 200) {
     let choices = getNeighbors(emptyIndex).filter((idx) => idx !== previousIndex);
     if (choices.length === 0) choices = getNeighbors(emptyIndex);
     const nextIndex = choices[Math.floor(Math.random() * choices.length)];
+    shuffleHistory.push(tiles[nextIndex]);
     [tiles[emptyIndex], tiles[nextIndex]] = [tiles[nextIndex], tiles[emptyIndex]];
     previousIndex = emptyIndex;
     emptyIndex = nextIndex;
@@ -155,6 +179,7 @@ function shuffleByLegalMoves(steps = 200) {
   }
 
   initialShuffledState = [...tiles];
+  moveHistory = [...shuffleHistory];
 }
 
 function resetProgress() {
@@ -166,7 +191,16 @@ function resetProgress() {
   updateStatus();
 }
 
+function cancelAutoSolve() {
+  solveRunId += 1;
+  if (isAutoSolving) {
+    isAutoSolving = false;
+    setControlsDisabled(false);
+  }
+}
+
 function newGame() {
+  cancelAutoSolve();
   size = Number(sizeSelect.value);
   previewImage.src = imageSrc;
   resetProgress();
@@ -175,17 +209,60 @@ function newGame() {
 }
 
 function resetToShuffle() {
+  cancelAutoSolve();
   if (!initialShuffledState.length) return;
   tiles = [...initialShuffledState];
+  moveHistory = [...shuffleHistory];
   resetProgress();
   renderBoard();
 }
 
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function autoSolve() {
+  if (isAutoSolving || isSolved()) return;
+  if (!moveHistory.length) return;
+
+  isAutoSolving = true;
+  const runId = ++solveRunId;
+  setControlsDisabled(true);
+  messageEl.textContent = "解答中...";
+
+  const solution = [...moveHistory].reverse();
+
+  for (const tileValue of solution) {
+    if (runId !== solveRunId) return;
+
+    const tileIndex = tiles.indexOf(tileValue);
+    const moved = moveTile(tileIndex, { trackHistory: false, updateMessage: false });
+    if (!moved) {
+      messageEl.textContent = "解答失敗，請重新打亂";
+      isAutoSolving = false;
+      setControlsDisabled(false);
+      return;
+    }
+
+    await wait(120);
+  }
+
+  if (runId !== solveRunId) return;
+
+  moveHistory = [];
+  isAutoSolving = false;
+  setControlsDisabled(false);
+  stopTimer();
+  messageEl.textContent = `完成！共 ${moves} 步`;
+}
+
 shuffleBtn.addEventListener("click", newGame);
 resetBtn.addEventListener("click", resetToShuffle);
+solveBtn.addEventListener("click", autoSolve);
 sizeSelect.addEventListener("change", newGame);
 
 document.addEventListener("keydown", (event) => {
+  if (isAutoSolving) return;
   const emptyIndex = getEmptyIndex();
   const row = Math.floor(emptyIndex / size);
   const col = emptyIndex % size;

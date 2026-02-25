@@ -90,6 +90,20 @@ body {
   background: #584d40;
 }
 
+#solveBtn {
+  background: #2d7d5a;
+  border-color: #2d7d5a;
+}
+
+#solveBtn:hover {
+  background: #236449;
+}
+
+.controls button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .status {
   margin-top: 14px;
   display: flex;
