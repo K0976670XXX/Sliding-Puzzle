@@ -110,6 +110,22 @@ body {
   place-items: center;
 }
 
+.preview {
+  margin-top: 14px;
+  border: 1px solid #e4d4bd;
+  border-radius: 12px;
+  padding: 8px;
+  background: #fff;
+}
+
+.preview img {
+  display: block;
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
 .board {
   width: min(90vw, 500px);
   aspect-ratio: 1;
@@ -124,7 +140,8 @@ body {
 .tile {
   border: 0;
   border-radius: 12px;
-  background: var(--tile);
+  background-color: var(--tile);
+  background-repeat: no-repeat;
   color: #2f261d;
   font-size: clamp(1rem, 3vw, 1.4rem);
   font-weight: 700;
@@ -148,7 +165,8 @@ body {
 }
 
 .tile.empty {
-  background: transparent;
+  background: rgba(255, 255, 255, 0.22);
+  border: 1px dashed rgba(111, 98, 83, 0.35);
   box-shadow: none;
   cursor: default;
 }

@@ -5,6 +5,9 @@ const messageEl = document.getElementById("message");
 const shuffleBtn = document.getElementById("shuffleBtn");
 const resetBtn = document.getElementById("resetBtn");
 const sizeSelect = document.getElementById("sizeSelect");
+const previewImage = document.getElementById("previewImage");
+
+const imageSrc = "image.png";
 
 let size = Number(sizeSelect.value);
 let tiles = [];
@@ -107,8 +110,16 @@ function renderBoard() {
       tile.setAttribute("aria-label", "空白格");
       tile.disabled = true;
     } else {
-      tile.textContent = String(value);
-      tile.setAttribute("aria-label", `數字 ${value}`);
+      const zeroBased = value - 1;
+      const imgRow = Math.floor(zeroBased / size);
+      const imgCol = zeroBased % size;
+      const denom = Math.max(size - 1, 1);
+
+      tile.setAttribute("aria-label", `拼圖片段 ${value}`);
+      tile.style.backgroundImage = `url("${imageSrc}")`;
+      tile.style.backgroundSize = `${size * 100}% ${size * 100}%`;
+      tile.style.backgroundPosition = `${(imgCol / denom) * 100}% ${(imgRow / denom) * 100}%`;
+
       tile.addEventListener("click", () => moveTile(index));
       tile.addEventListener("keydown", (event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -157,6 +168,7 @@ function resetProgress() {
 
 function newGame() {
   size = Number(sizeSelect.value);
+  previewImage.src = imageSrc;
   resetProgress();
   shuffleByLegalMoves(size * size * 30);
   renderBoard();
