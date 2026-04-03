@@ -470,15 +470,12 @@ async function maybeSubmitRank(result) {
   const entries = normalizeRankEntries(latestLeaderboard[rankType]);
   const sameNameEntries = entries.filter((entry) => entry.name === playerName);
 
-  if (sameNameEntries.length === 0) {
-    setRankUpdateStatus("未送出榜單：榜單中尚未找到此玩家名稱。");
-    return;
-  }
-
-  const bestExistingSteps = Math.min(...sameNameEntries.map((entry) => entry.Steps));
-  if (finalMoves >= bestExistingSteps) {
-    setRankUpdateStatus(`未送出榜單：目前最佳步數為 ${bestExistingSteps}，這次沒有更低。`);
-    return;
+  if (sameNameEntries.length > 0) {
+    const bestExistingSteps = Math.min(...sameNameEntries.map((entry) => entry.Steps));
+    if (finalMoves >= bestExistingSteps) {
+      setRankUpdateStatus(`未送出榜單：目前最佳步數為 ${bestExistingSteps}，這次沒有更低。`);
+      return;
+    }
   }
 
   const payload = {
