@@ -10,34 +10,82 @@
   <main class="app">
     <header class="header">
       <h1>Sliding Puzzle</h1>
-      <p>把數字排回 1 到 15，空格在最後一格。</p>
+      <p>切換圖片、調整難度，挑戰最少步數完成拼圖。</p>
     </header>
 
-    <section class="controls" aria-label="遊戲控制">
-      <label for="sizeSelect">尺寸</label>
-      <select id="sizeSelect">
-        <option value="3">3 x 3</option>
-        <option value="4" selected>4 x 4</option>
-        <option value="5">5 x 5</option>
-      </select>
-      <button id="shuffleBtn" type="button">重新打亂</button>
-      <button id="resetBtn" type="button">重設</button>
-      <button id="solveBtn" type="button">一鍵解答</button>
-    </section>
+    <div class="layout">
+      <aside class="sidebar">
+        <section class="panel controls-panel" aria-label="遊戲設定">
+          <div class="field-group">
+            <label for="playerName">玩家名稱</label>
+            <div class="inline-field">
+              <input id="playerName" type="text" maxlength="20" placeholder="請輸入你的名字">
+              <button id="saveNameBtn" type="button" class="secondary-btn">儲存名字</button>
+            </div>
+            <p class="field-hint">名稱會保存在目前瀏覽器中。</p>
+          </div>
 
-    <section class="status" aria-live="polite">
-      <span>步數：<strong id="moves">0</strong></span>
-      <span>時間：<strong id="timer">00:00</strong></span>
-      <span id="message" class="message"></span>
-    </section>
+          <div class="field-group">
+            <label for="sizeSelect">遊戲尺寸</label>
+            <select id="sizeSelect">
+              <option value="3">3 x 3</option>
+              <option value="4" selected>4 x 4</option>
+              <option value="5">5 x 5</option>
+              <option value="6">6 x 6</option>
+            </select>
+          </div>
 
-    <section class="preview" aria-label="原圖預覽">
-      <img id="previewImage" src="image.png" alt="拼圖原圖預覽">
-    </section>
+          <div class="field-group">
+            <label for="imageSelect">拼圖圖片</label>
+            <div class="inline-field">
+              <select id="imageSelect"></select>
+              <button id="nextImageBtn" type="button" class="secondary-btn">下一張</button>
+            </div>
+            <p id="imageStatus" class="field-hint" aria-live="polite"></p>
+          </div>
 
-    <section class="board-wrap">
-      <div id="board" class="board" role="grid" aria-label="Sliding puzzle board"></div>
-    </section>
+          <div class="button-row">
+            <button id="shuffleBtn" type="button">開始新局</button>
+            <button id="resetBtn" type="button" class="secondary-btn">回到打亂</button>
+            <button id="solveBtn" type="button" class="success-btn">自動還原</button>
+          </div>
+        </section>
+
+        <section class="panel status-panel" aria-live="polite">
+          <div class="status-item">
+            <span class="status-label">步數</span>
+            <strong id="moves">0</strong>
+          </div>
+          <div class="status-item">
+            <span class="status-label">時間</span>
+            <strong id="timer">00:00:00</strong>
+          </div>
+          <p id="message" class="message"></p>
+          <p id="rankUpdateStatus" class="rank-update-status"></p>
+        </section>
+
+        <section class="panel preview" aria-label="拼圖原圖預覽">
+          <div class="preview-frame">
+            <img id="previewImage" alt="拼圖原圖預覽">
+          </div>
+        </section>
+
+        <section class="panel leaderboard-panel" aria-label="排行榜">
+          <div class="panel-header">
+            <h2>排行榜</h2>
+            <button id="refreshRankBtn" type="button" class="ghost-btn">重新整理</button>
+          </div>
+          <p id="leaderboardStatus" class="field-hint" aria-live="polite"></p>
+          <ol id="leaderboardList" class="leaderboard-list"></ol>
+        </section>
+      </aside>
+
+      <section class="game-area">
+        <div class="board-wrap">
+          <div id="board" class="board" role="grid" aria-label="Sliding puzzle board"></div>
+        </div>
+      </section>
+    </div>
   </main>
 
   <script src="script.js"></script>
