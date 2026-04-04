@@ -5,12 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sliding Puzzle</title>
   <link rel="stylesheet" href="styles.css">
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7343628224568601" crossorigin="anonymous"></script>
 </head>
 <body>
   <main class="app">
     <header class="header">
       <h1>Sliding Puzzle</h1>
-      <p>挑戰最少步數完成拼圖，手機與桌面都能順暢遊玩。</p>
+      <p>挑戰最少步數與最快時間，完成每一局拼圖。</p>
     </header>
 
     <div class="layout">
@@ -37,7 +38,6 @@
 
           <div class="button-row">
             <button id="shuffleBtn" type="button">開始新局</button>
-            <button id="resetBtn" type="button" class="secondary-btn">回到打亂</button>
             <button id="solveBtn" type="button" class="success-btn">自動還原</button>
           </div>
         </section>
@@ -72,7 +72,10 @@
     <section class="panel leaderboard-panel" aria-label="排行榜">
       <div class="panel-header">
         <h2>排行榜</h2>
-        <button id="refreshRankBtn" type="button" class="ghost-btn">重新整理</button>
+        <div class="panel-actions">
+          <button id="toggleLeaderboardModeBtn" type="button" class="ghost-btn">查看速度榜</button>
+          <button id="refreshRankBtn" type="button" class="ghost-btn">重新整理</button>
+        </div>
       </div>
       <p id="leaderboardStatus" class="field-hint" aria-live="polite"></p>
       <ol id="leaderboardList" class="leaderboard-list"></ol>

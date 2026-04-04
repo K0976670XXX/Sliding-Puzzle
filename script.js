@@ -4,7 +4,6 @@ const timerEl = document.getElementById("timer");
 const messageEl = document.getElementById("message");
 const rankUpdateStatusEl = document.getElementById("rankUpdateStatus");
 const shuffleBtn = document.getElementById("shuffleBtn");
-const resetBtn = document.getElementById("resetBtn");
 const solveBtn = document.getElementById("solveBtn");
 const sizeSelect = document.getElementById("sizeSelect");
 const previewImage = document.getElementById("previewImage");
@@ -13,15 +12,25 @@ const saveNameBtn = document.getElementById("saveNameBtn");
 const leaderboardStatusEl = document.getElementById("leaderboardStatus");
 const leaderboardListEl = document.getElementById("leaderboardList");
 const refreshRankBtn = document.getElementById("refreshRankBtn");
+const toggleLeaderboardModeBtn = document.getElementById("toggleLeaderboardModeBtn");
 
 const IMAGE_MANIFEST_PATH = "image/images.json";
 const IMAGE_FALLBACK_FILE = "default-puzzle.png";
 const STORAGE_KEYS = {
   playerName: "sliding-puzzle-player-name",
   imageId: "sliding-puzzle-image-id",
+  leaderboardMode: "sliding-puzzle-leaderboard-mode",
 };
 const LEADERBOARD_URL = "https://jsonhosting.com/api/json/d6856351/raw";
 const RANK_UPDATE_URL = "https://elaina-k0806-790289487246.asia-east1.run.app/webhook";
+const LEADERBOARD_MODES = {
+  steps: "steps",
+  speed: "speed",
+};
+const SOLVER_LIMITS = {
+  3: { maxExpanded: 50000, maxDurationMs: 1500 },
+  4: { maxExpanded: 250000, maxDurationMs: 4000 },
+};
 
 let size = Number(sizeSelect.value);
 let tiles = [];
@@ -29,9 +38,9 @@ let moves = 0;
 let seconds = 0;
 let timerId = null;
 let started = false;
-let initialShuffledState = [];
-let shuffleHistory = [];
 let moveHistory = [];
+let stateHistory = [];
+let stateDepthByKey = new Map();
 let isAutoSolving = false;
 let solveRunId = 0;
 let gameCompleted = false;
@@ -39,6 +48,25 @@ let usedAutoSolve = false;
 let imageCatalog = [];
 let currentImageIndex = 0;
 let leaderboardData = {};
+let leaderboardMode = localStorage.getItem(STORAGE_KEYS.leaderboardMode) === LEADERBOARD_MODES.speed
+  ? LEADERBOARD_MODES.speed
+  : LEADERBOARD_MODES.steps;
+
+function getAppBaseUrl() {
+  const { origin, pathname } = window.location;
+  if (pathname.endsWith("/")) {
+    return new URL(origin + pathname);
+  }
+
+  const lastSlashIndex = pathname.lastIndexOf("/");
+  const lastSegment = pathname.slice(lastSlashIndex + 1);
+  const looksLikeFile = lastSegment.includes(".");
+  const normalizedPath = looksLikeFile
+    ? pathname.slice(0, lastSlashIndex + 1)
+    : `${pathname}/`;
+
+  return new URL(origin + normalizedPath);
+}
 
 function buildSolvedState(n) {
   return [...Array(n * n - 1).keys()].map((index) => index + 1).concat(0);
@@ -63,6 +91,67 @@ function parseTimeToSeconds(value) {
   return Number.MAX_SAFE_INTEGER;
 }
 
+class MinHeap {
+  constructor(compare) {
+    this.compare = compare;
+    this.items = [];
+  }
+
+  get size() {
+    return this.items.length;
+  }
+
+  push(value) {
+    this.items.push(value);
+    this.bubbleUp(this.items.length - 1);
+  }
+
+  pop() {
+    if (this.items.length === 0) return null;
+    const top = this.items[0];
+    const last = this.items.pop();
+    if (this.items.length > 0) {
+      this.items[0] = last;
+      this.bubbleDown(0);
+    }
+    return top;
+  }
+
+  bubbleUp(index) {
+    let currentIndex = index;
+    while (currentIndex > 0) {
+      const parentIndex = Math.floor((currentIndex - 1) / 2);
+      if (this.compare(this.items[currentIndex], this.items[parentIndex]) >= 0) break;
+      [this.items[currentIndex], this.items[parentIndex]] = [this.items[parentIndex], this.items[currentIndex]];
+      currentIndex = parentIndex;
+    }
+  }
+
+  bubbleDown(index) {
+    let currentIndex = index;
+    const length = this.items.length;
+
+    while (true) {
+      const leftIndex = (currentIndex * 2) + 1;
+      const rightIndex = leftIndex + 1;
+      let smallestIndex = currentIndex;
+
+      if (leftIndex < length && this.compare(this.items[leftIndex], this.items[smallestIndex]) < 0) {
+        smallestIndex = leftIndex;
+      }
+
+      if (rightIndex < length && this.compare(this.items[rightIndex], this.items[smallestIndex]) < 0) {
+        smallestIndex = rightIndex;
+      }
+
+      if (smallestIndex === currentIndex) break;
+
+      [this.items[currentIndex], this.items[smallestIndex]] = [this.items[smallestIndex], this.items[currentIndex]];
+      currentIndex = smallestIndex;
+    }
+  }
+}
+
 function updateStatus() {
   movesEl.textContent = String(moves);
   timerEl.textContent = formatTime(seconds);
@@ -76,8 +165,23 @@ function setRankUpdateStatus(text = "") {
   rankUpdateStatusEl.textContent = text;
 }
 
-function getCurrentRankType() {
+function getRankType(mode = leaderboardMode) {
+  return mode === LEADERBOARD_MODES.speed
+    ? `${size}x${size}_Rank_speed`
+    : `${size}x${size}_Rank`;
+}
+
+function getSubmissionRankType() {
   return `${size}x${size}_Rank`;
+}
+
+function getLeaderboardModeLabel(mode = leaderboardMode) {
+  return mode === LEADERBOARD_MODES.speed ? "速度榜" : "步數榜";
+}
+
+function updateLeaderboardModeButton() {
+  const nextModeLabel = leaderboardMode === LEADERBOARD_MODES.steps ? "速度榜" : "步數榜";
+  toggleLeaderboardModeBtn.textContent = `查看${nextModeLabel}`;
 }
 
 function getEmptyIndex() {
@@ -93,6 +197,19 @@ function getNeighbors(index) {
   if (row < size - 1) neighbors.push(index + size);
   if (col > 0) neighbors.push(index - 1);
   if (col < size - 1) neighbors.push(index + 1);
+
+  return neighbors;
+}
+
+function getNeighborsForSize(index, boardSize) {
+  const row = Math.floor(index / boardSize);
+  const col = index % boardSize;
+  const neighbors = [];
+
+  if (row > 0) neighbors.push(index - boardSize);
+  if (row < boardSize - 1) neighbors.push(index + boardSize);
+  if (col > 0) neighbors.push(index - 1);
+  if (col < boardSize - 1) neighbors.push(index + 1);
 
   return neighbors;
 }
@@ -128,7 +245,205 @@ function getCurrentImage() {
   return imageCatalog[currentImageIndex] || null;
 }
 
-function refreshImageControls() {
+function serializeTiles() {
+  return tiles.join(",");
+}
+
+function resetPathTracking() {
+  const currentState = serializeTiles();
+  moveHistory = [];
+  stateHistory = [currentState];
+  stateDepthByKey = new Map([[currentState, 0]]);
+}
+
+function recordCurrentState(movedValue) {
+  const stateKey = serializeTiles();
+  const existingDepth = stateDepthByKey.get(stateKey);
+
+  if (existingDepth !== undefined) {
+    while (stateHistory.length - 1 > existingDepth) {
+      const removedState = stateHistory.pop();
+      stateDepthByKey.delete(removedState);
+    }
+    moveHistory.length = existingDepth;
+    return;
+  }
+
+  moveHistory.push(movedValue);
+  stateHistory.push(stateKey);
+  stateDepthByKey.set(stateKey, stateHistory.length - 1);
+}
+
+function createGoalLookup(boardSize) {
+  const total = boardSize * boardSize;
+  const goalRows = new Array(total);
+  const goalCols = new Array(total);
+
+  for (let value = 1; value < total; value += 1) {
+    goalRows[value] = Math.floor((value - 1) / boardSize);
+    goalCols[value] = (value - 1) % boardSize;
+  }
+
+  goalRows[0] = boardSize - 1;
+  goalCols[0] = boardSize - 1;
+
+  return { goalRows, goalCols };
+}
+
+function getLinearConflict(state, boardSize, goalRows, goalCols) {
+  let conflict = 0;
+
+  for (let row = 0; row < boardSize; row += 1) {
+    for (let colA = 0; colA < boardSize; colA += 1) {
+      const tileA = state[(row * boardSize) + colA];
+      if (tileA === 0 || goalRows[tileA] !== row) continue;
+
+      for (let colB = colA + 1; colB < boardSize; colB += 1) {
+        const tileB = state[(row * boardSize) + colB];
+        if (tileB === 0 || goalRows[tileB] !== row) continue;
+        if (goalCols[tileA] > goalCols[tileB]) conflict += 2;
+      }
+    }
+  }
+
+  for (let col = 0; col < boardSize; col += 1) {
+    for (let rowA = 0; rowA < boardSize; rowA += 1) {
+      const tileA = state[(rowA * boardSize) + col];
+      if (tileA === 0 || goalCols[tileA] !== col) continue;
+
+      for (let rowB = rowA + 1; rowB < boardSize; rowB += 1) {
+        const tileB = state[(rowB * boardSize) + col];
+        if (tileB === 0 || goalCols[tileB] !== col) continue;
+        if (goalRows[tileA] > goalRows[tileB]) conflict += 2;
+      }
+    }
+  }
+
+  return conflict;
+}
+
+function getHeuristic(state, boardSize, goalRows, goalCols) {
+  let distance = 0;
+
+  for (let index = 0; index < state.length; index += 1) {
+    const value = state[index];
+    if (value === 0) continue;
+
+    const row = Math.floor(index / boardSize);
+    const col = index % boardSize;
+    distance += Math.abs(goalRows[value] - row) + Math.abs(goalCols[value] - col);
+  }
+
+  return distance + getLinearConflict(state, boardSize, goalRows, goalCols);
+}
+
+function reconstructSolution(goalKey, parentByKey, moveByKey) {
+  const solution = [];
+  let currentKey = goalKey;
+
+  while (parentByKey.get(currentKey) !== null) {
+    solution.push(moveByKey.get(currentKey));
+    currentKey = parentByKey.get(currentKey);
+  }
+
+  return solution.reverse();
+}
+
+function findShortestSolution(startState, boardSize) {
+  if (boardSize > 4) {
+    return {
+      solution: null,
+      reason: "oversize",
+    };
+  }
+
+  const limits = SOLVER_LIMITS[boardSize] || SOLVER_LIMITS[4];
+  const goalState = buildSolvedState(boardSize);
+  const goalKey = goalState.join(",");
+  const startKey = startState.join(",");
+
+  if (startKey === goalKey) {
+    return {
+      solution: [],
+      reason: "solved",
+    };
+  }
+
+  const { goalRows, goalCols } = createGoalLookup(boardSize);
+  const openSet = new MinHeap((left, right) => {
+    if (left.f !== right.f) return left.f - right.f;
+    return left.h - right.h;
+  });
+  const parentByKey = new Map([[startKey, null]]);
+  const moveByKey = new Map();
+  const bestCostByKey = new Map([[startKey, 0]]);
+  const startedAt = performance.now();
+  let expanded = 0;
+  const startH = getHeuristic(startState, boardSize, goalRows, goalCols);
+
+  openSet.push({
+    state: [...startState],
+    key: startKey,
+    zeroIndex: startState.indexOf(0),
+    g: 0,
+    h: startH,
+    f: startH,
+  });
+
+  while (openSet.size > 0) {
+    const current = openSet.pop();
+    if (!current) break;
+
+    if (current.g !== bestCostByKey.get(current.key)) {
+      continue;
+    }
+
+    if (current.key === goalKey) {
+      return {
+        solution: reconstructSolution(goalKey, parentByKey, moveByKey),
+        reason: "shortest",
+      };
+    }
+
+    expanded += 1;
+    if (expanded > limits.maxExpanded || (performance.now() - startedAt) > limits.maxDurationMs) {
+      return {
+        solution: null,
+        reason: "timeout",
+      };
+    }
+
+    const neighborIndexes = getNeighborsForSize(current.zeroIndex, boardSize);
+    for (const tileIndex of neighborIndexes) {
+      const nextState = [...current.state];
+      const movedTile = nextState[tileIndex];
+      [nextState[current.zeroIndex], nextState[tileIndex]] = [nextState[tileIndex], nextState[current.zeroIndex]];
+
+      const nextKey = nextState.join(",");
+      const nextG = current.g + 1;
+      if (nextG >= (bestCostByKey.get(nextKey) ?? Infinity)) {
+        continue;
+      }
+
+      const nextH = getHeuristic(nextState, boardSize, goalRows, goalCols);
+      bestCostByKey.set(nextKey, nextG);
+      parentByKey.set(nextKey, current.key);
+      moveByKey.set(nextKey, movedTile);
+      openSet.push({
+        state: nextState,
+        key: nextKey,
+        zeroIndex: tileIndex,
+        g: nextG,
+        h: nextH,
+        f: nextG + nextH,
+      });
+    }
+  }
+
+  return {
+    solution: null,
+    reason: "unreachable",
+  };
 }
 
 function applyCurrentImage({ rerender = true } = {}) {
@@ -146,10 +461,8 @@ function applyCurrentImage({ rerender = true } = {}) {
 
 function setControlsDisabled(disabled) {
   shuffleBtn.disabled = disabled;
-  resetBtn.disabled = disabled;
   sizeSelect.disabled = disabled;
   solveBtn.disabled = disabled;
-  refreshImageControls(disabled);
 }
 
 function renderBoard() {
@@ -158,6 +471,7 @@ function renderBoard() {
   boardEl.dataset.size = String(size);
 
   const currentImage = getCurrentImage();
+  const showIndexes = size >= 5;
 
   tiles.forEach((value, index) => {
     const tile = document.createElement("button");
@@ -189,6 +503,13 @@ function renderBoard() {
       });
     }
 
+    if (showIndexes) {
+      const indexBadge = document.createElement("span");
+      indexBadge.className = "tile-index";
+      indexBadge.textContent = String(value);
+      tile.appendChild(indexBadge);
+    }
+
     boardEl.appendChild(tile);
   });
 
@@ -197,7 +518,7 @@ function renderBoard() {
 
 function shuffleByLegalMoves(steps = 200) {
   tiles = buildSolvedState(size);
-  shuffleHistory = [];
+  resetPathTracking();
   let emptyIndex = getEmptyIndex();
   let previousIndex = -1;
 
@@ -206,19 +527,16 @@ function shuffleByLegalMoves(steps = 200) {
     if (choices.length === 0) choices = getNeighbors(emptyIndex);
 
     const nextIndex = choices[Math.floor(Math.random() * choices.length)];
-    shuffleHistory.push(tiles[nextIndex]);
+    const movedValue = tiles[nextIndex];
     [tiles[emptyIndex], tiles[nextIndex]] = [tiles[nextIndex], tiles[emptyIndex]];
+    recordCurrentState(movedValue);
     previousIndex = emptyIndex;
     emptyIndex = nextIndex;
   }
 
   if (isSolved()) {
     shuffleByLegalMoves(steps + 20);
-    return;
   }
-
-  initialShuffledState = [...tiles];
-  moveHistory = [...shuffleHistory];
 }
 
 function resetProgress() {
@@ -256,7 +574,7 @@ function moveTile(index, options = {}) {
   moves += 1;
 
   if (trackHistory) {
-    moveHistory.push(movedValue);
+    recordCurrentState(movedValue);
   }
 
   if (!started) {
@@ -288,18 +606,6 @@ function newGame() {
   renderLeaderboard();
 }
 
-function resetToShuffle() {
-  cancelAutoSolve();
-  if (!initialShuffledState.length) return;
-
-  usedAutoSolve = false;
-  tiles = [...initialShuffledState];
-  moveHistory = [...shuffleHistory];
-  resetProgress();
-  selectRandomImage({ rerender: false });
-  renderBoard();
-}
-
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -312,10 +618,29 @@ async function autoSolve() {
   isAutoSolving = true;
   const runId = ++solveRunId;
   setControlsDisabled(true);
-  setMessage("自動還原中...");
+  setMessage("正在計算最短路徑...");
   setRankUpdateStatus("此局使用自動還原，不會送出榜單。");
 
-  const solution = [...moveHistory].reverse();
+  await wait(20);
+  if (runId !== solveRunId) return;
+
+  const shortestResult = findShortestSolution([...tiles], size);
+  let solution = shortestResult.solution;
+  let solvingMessage = "正在執行最短路徑還原...";
+
+  if (!solution) {
+    solution = [...moveHistory].reverse();
+    if (shortestResult.reason === "oversize") {
+      solvingMessage = "5x5 / 6x6 最短路徑搜尋成本過高，改用回溯還原。";
+    } else if (shortestResult.reason === "timeout") {
+      solvingMessage = "最短路徑計算時間過長，改用回溯還原。";
+    } else {
+      solvingMessage = "最短路徑計算失敗，改用回溯還原。";
+    }
+  }
+
+  setMessage(solvingMessage);
+  const stepDelay = solution.length >= 160 ? 15 : solution.length >= 80 ? 28 : 60;
 
   for (const tileValue of solution) {
     if (runId !== solveRunId) return;
@@ -329,12 +654,14 @@ async function autoSolve() {
       return;
     }
 
-    await wait(90);
+    await wait(stepDelay);
   }
 
   if (runId !== solveRunId) return;
 
   moveHistory = [];
+  stateHistory = [serializeTiles()];
+  stateDepthByKey = new Map([[stateHistory[0], 0]]);
   isAutoSolving = false;
   setControlsDisabled(false);
   finishGame({
@@ -356,28 +683,33 @@ function normalizeRankEntries(entries) {
     .filter((entry) => entry.name && Number.isFinite(entry.Steps));
 }
 
-function sortRankEntries(entries) {
+function sortRankEntries(entries, mode = leaderboardMode) {
   return [...entries].sort((left, right) => {
-    if (left.Steps !== right.Steps) return left.Steps - right.Steps;
+    if (mode === LEADERBOARD_MODES.speed) {
+      const timeDifference = parseTimeToSeconds(left.Time) - parseTimeToSeconds(right.Time);
+      if (timeDifference !== 0) return timeDifference;
+      if (left.Steps !== right.Steps) return left.Steps - right.Steps;
+      return left.name.localeCompare(right.name, "zh-Hant");
+    }
 
+    if (left.Steps !== right.Steps) return left.Steps - right.Steps;
     const timeDifference = parseTimeToSeconds(left.Time) - parseTimeToSeconds(right.Time);
     if (timeDifference !== 0) return timeDifference;
-
     return left.name.localeCompare(right.name, "zh-Hant");
   });
 }
 
 function renderLeaderboard() {
-  const rankType = getCurrentRankType();
+  const rankType = getRankType();
   const currentName = getPlayerName();
-  const entries = sortRankEntries(normalizeRankEntries(leaderboardData[rankType]));
+  const entries = sortRankEntries(normalizeRankEntries(leaderboardData[rankType]), leaderboardMode);
 
   leaderboardListEl.innerHTML = "";
 
   if (entries.length === 0) {
     const emptyItem = document.createElement("li");
     emptyItem.className = "leaderboard-empty";
-    emptyItem.textContent = `${rankType.replace("_Rank", "")} 目前沒有資料`;
+    emptyItem.textContent = `${size}x${size} ${getLeaderboardModeLabel()}目前沒有資料`;
     leaderboardListEl.appendChild(emptyItem);
   } else {
     entries.forEach((entry, index) => {
@@ -406,14 +738,12 @@ function renderLeaderboard() {
       infoWrap.appendChild(metaEl);
       item.appendChild(rankBadge);
       item.appendChild(infoWrap);
-
       leaderboardListEl.appendChild(item);
     });
   }
 
-  if (!leaderboardStatusEl.textContent) {
-    leaderboardStatusEl.textContent = `目前顯示 ${rankType.replace("_Rank", "")} 排行榜`;
-  }
+  leaderboardStatusEl.textContent = `目前顯示 ${size}x${size} ${getLeaderboardModeLabel()}`;
+  updateLeaderboardModeButton();
 }
 
 async function fetchLeaderboardData() {
@@ -433,7 +763,6 @@ async function refreshLeaderboard({ silent = false } = {}) {
 
   try {
     leaderboardData = await fetchLeaderboardData();
-    leaderboardStatusEl.textContent = `目前顯示 ${getCurrentRankType().replace("_Rank", "")} 排行榜`;
     renderLeaderboard();
     return leaderboardData;
   } catch (error) {
@@ -444,10 +773,20 @@ async function refreshLeaderboard({ silent = false } = {}) {
   }
 }
 
+function getBestRankForName(entries, name, mode) {
+  const sameNameEntries = normalizeRankEntries(entries).filter((entry) => entry.name === name);
+  if (!sameNameEntries.length) return null;
+
+  if (mode === LEADERBOARD_MODES.speed) {
+    return Math.min(...sameNameEntries.map((entry) => parseTimeToSeconds(entry.Time)));
+  }
+
+  return Math.min(...sameNameEntries.map((entry) => entry.Steps));
+}
+
 async function maybeSubmitRank(result) {
   const {
     playerName,
-    rankType,
     moves: finalMoves,
     time: finalTime,
   } = result;
@@ -467,21 +806,30 @@ async function maybeSubmitRank(result) {
     return;
   }
 
-  const entries = normalizeRankEntries(latestLeaderboard[rankType]);
-  const sameNameEntries = entries.filter((entry) => entry.name === playerName);
+  const stepBest = getBestRankForName(
+    latestLeaderboard[getRankType(LEADERBOARD_MODES.steps)],
+    playerName,
+    LEADERBOARD_MODES.steps,
+  );
+  const speedBest = getBestRankForName(
+    latestLeaderboard[getRankType(LEADERBOARD_MODES.speed)],
+    playerName,
+    LEADERBOARD_MODES.speed,
+  );
+  const finalTimeSeconds = parseTimeToSeconds(finalTime);
 
-  if (sameNameEntries.length > 0) {
-    const bestExistingSteps = Math.min(...sameNameEntries.map((entry) => entry.Steps));
-    if (finalMoves >= bestExistingSteps) {
-      setRankUpdateStatus(`未送出榜單：目前最佳步數為 ${bestExistingSteps}，這次沒有更低。`);
-      return;
-    }
+  const improvedSteps = stepBest === null || finalMoves < stepBest;
+  const improvedSpeed = speedBest === null || finalTimeSeconds < speedBest;
+
+  if (!improvedSteps && !improvedSpeed) {
+    setRankUpdateStatus(`未送出榜單：最佳步數 ${stepBest}，最佳時間 ${formatTime(speedBest)}。`);
+    return;
   }
 
   const payload = {
     event: "Sliding.Puzzle",
     content: {
-      type: rankType,
+      type: getSubmissionRankType(),
       data: {
         name: playerName,
         Steps: finalMoves,
@@ -503,7 +851,11 @@ async function maybeSubmitRank(result) {
       throw new Error(`榜單更新失敗：${response.status}`);
     }
 
-    setRankUpdateStatus("已送出榜單更新。");
+    const reasons = [];
+    if (improvedSteps) reasons.push("步數榜");
+    if (improvedSpeed) reasons.push("速度榜");
+
+    setRankUpdateStatus(`已送出榜單更新：${reasons.join("、")}。`);
     await refreshLeaderboard({ silent: false });
   } catch (error) {
     console.error(error);
@@ -524,7 +876,6 @@ function finishGame(options = {}) {
 
   const result = {
     playerName: getPlayerName(),
-    rankType: getCurrentRankType(),
     moves,
     time: formatTime(seconds),
   };
@@ -562,11 +913,8 @@ function normalizeImageManifest(manifest, manifestUrl) {
     .filter(Boolean);
 }
 
-function renderImageOptions() {
-}
-
 async function loadImageCatalog() {
-  const manifestUrl = new URL(IMAGE_MANIFEST_PATH, window.location.href);
+  const manifestUrl = new URL(IMAGE_MANIFEST_PATH, getAppBaseUrl());
   const fallbackCatalog = normalizeImageManifest({
     images: [
       {
@@ -595,7 +943,6 @@ async function loadImageCatalog() {
     imageCatalog = fallbackCatalog;
   }
 
-  renderImageOptions();
   selectRandomImage({ rerender: false });
 }
 
@@ -627,8 +974,16 @@ function selectRandomImage({ rerender = true } = {}) {
   applyCurrentImage({ rerender });
 }
 
+function toggleLeaderboardMode() {
+  leaderboardMode = leaderboardMode === LEADERBOARD_MODES.steps
+    ? LEADERBOARD_MODES.speed
+    : LEADERBOARD_MODES.steps;
+
+  localStorage.setItem(STORAGE_KEYS.leaderboardMode, leaderboardMode);
+  renderLeaderboard();
+}
+
 shuffleBtn.addEventListener("click", newGame);
-resetBtn.addEventListener("click", resetToShuffle);
 solveBtn.addEventListener("click", autoSolve);
 sizeSelect.addEventListener("change", () => {
   newGame();
@@ -639,6 +994,7 @@ playerNameInput.addEventListener("change", savePlayerName);
 refreshRankBtn.addEventListener("click", () => {
   void refreshLeaderboard().catch(() => {});
 });
+toggleLeaderboardModeBtn.addEventListener("click", toggleLeaderboardMode);
 
 document.addEventListener("keydown", (event) => {
   const tagName = document.activeElement?.tagName;
@@ -665,6 +1021,7 @@ async function initialize() {
   loadSavedPlayerName();
   await loadImageCatalog();
   newGame();
+  updateLeaderboardModeButton();
 
   try {
     await refreshLeaderboard();
