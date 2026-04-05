@@ -13,6 +13,10 @@ const leaderboardStatusEl = document.getElementById("leaderboardStatus");
 const leaderboardListEl = document.getElementById("leaderboardList");
 const refreshRankBtn = document.getElementById("refreshRankBtn");
 const toggleLeaderboardModeBtn = document.getElementById("toggleLeaderboardModeBtn");
+const replayControlsEl = document.getElementById("replayControls");
+const replayPrevBtn = document.getElementById("replayPrevBtn");
+const replayNextBtn = document.getElementById("replayNextBtn");
+const replayStatusEl = document.getElementById("replayStatus");
 
 const IMAGE_MANIFEST_PATH = "image/images.json";
 const IMAGE_FALLBACK_FILE = "default-puzzle.png";
@@ -41,6 +45,8 @@ let started = false;
 let moveHistory = [];
 let stateHistory = [];
 let stateDepthByKey = new Map();
+let replayStateKeys = [];
+let replayIndex = -1;
 let isAutoSolving = false;
 let solveRunId = 0;
 let gameCompleted = false;
@@ -256,6 +262,16 @@ function resetPathTracking() {
   stateDepthByKey = new Map([[currentState, 0]]);
 }
 
+function clearReplayTracking() {
+  replayStateKeys = [];
+  replayIndex = -1;
+}
+
+function resetReplayTracking() {
+  replayStateKeys = [serializeTiles()];
+  replayIndex = replayStateKeys.length - 1;
+}
+
 function recordCurrentState(movedValue) {
   const stateKey = serializeTiles();
   const existingDepth = stateDepthByKey.get(stateKey);
@@ -272,6 +288,54 @@ function recordCurrentState(movedValue) {
   moveHistory.push(movedValue);
   stateHistory.push(stateKey);
   stateDepthByKey.set(stateKey, stateHistory.length - 1);
+}
+
+function recordReplayState() {
+  replayStateKeys.push(serializeTiles());
+  replayIndex = replayStateKeys.length - 1;
+}
+
+function getReplayStepCount() {
+  return Math.max(replayStateKeys.length - 1, 0);
+}
+
+function updateReplayControls() {
+  if (!replayControlsEl) return;
+
+  const hasReplay = gameCompleted && replayStateKeys.length > 1 && replayIndex >= 0;
+  replayControlsEl.hidden = !hasReplay;
+
+  if (!hasReplay) {
+    replayPrevBtn.disabled = true;
+    replayNextBtn.disabled = true;
+    replayStatusEl.textContent = "0 / 0";
+    return;
+  }
+
+  replayPrevBtn.disabled = replayIndex <= 0;
+  replayNextBtn.disabled = replayIndex >= replayStateKeys.length - 1;
+  replayStatusEl.textContent = `${replayIndex} / ${getReplayStepCount()}`;
+}
+
+function updateSolveButtonVisibility() {
+  if (!solveBtn) return;
+  solveBtn.hidden = gameCompleted;
+}
+
+function applyReplayState(index) {
+  if (!replayStateKeys.length) return;
+
+  const nextIndex = Math.max(0, Math.min(index, replayStateKeys.length - 1));
+  replayIndex = nextIndex;
+  tiles = replayStateKeys[nextIndex].split(",").map(Number);
+  renderBoard();
+  updateReplayControls();
+}
+
+function captureReplayForFinishedGame(stateKeys = replayStateKeys) {
+  replayStateKeys = [...stateKeys];
+  replayIndex = replayStateKeys.length - 1;
+  updateReplayControls();
 }
 
 function createGoalLookup(boardSize) {
@@ -536,7 +600,10 @@ function shuffleByLegalMoves(steps = 200) {
 
   if (isSolved()) {
     shuffleByLegalMoves(steps + 20);
+    return;
   }
+
+  resetReplayTracking();
 }
 
 function resetProgress() {
@@ -545,9 +612,12 @@ function resetProgress() {
   seconds = 0;
   started = false;
   gameCompleted = false;
+  clearReplayTracking();
+  updateSolveButtonVisibility();
   updateStatus();
   setMessage("");
   setRankUpdateStatus("");
+  updateReplayControls();
 }
 
 function cancelAutoSolve() {
@@ -561,6 +631,7 @@ function cancelAutoSolve() {
 function moveTile(index, options = {}) {
   const {
     trackHistory = true,
+    trackReplay = true,
     updateMessage = true,
   } = options;
 
@@ -575,6 +646,10 @@ function moveTile(index, options = {}) {
 
   if (trackHistory) {
     recordCurrentState(movedValue);
+  }
+
+  if (trackReplay) {
+    recordReplayState();
   }
 
   if (!started) {
@@ -611,7 +686,7 @@ function wait(ms) {
 }
 
 async function autoSolve() {
-  if (isAutoSolving || isSolved()) return;
+  if (isAutoSolving || gameCompleted || isSolved()) return;
   if (!moveHistory.length) return;
 
   usedAutoSolve = true;
@@ -867,12 +942,14 @@ function finishGame(options = {}) {
   const {
     allowRankSubmission = true,
     customMessage,
+    replayStates,
   } = options;
 
   if (gameCompleted) return;
 
   gameCompleted = true;
   stopTimer();
+  updateSolveButtonVisibility();
 
   const result = {
     playerName: getPlayerName(),
@@ -881,6 +958,7 @@ function finishGame(options = {}) {
   };
   const message = customMessage || `完成！步數 ${result.moves}，時間 ${result.time}`;
   setMessage(message);
+  captureReplayForFinishedGame(replayStates || replayStateKeys);
 
   if (allowRankSubmission && !usedAutoSolve) {
     void maybeSubmitRank(result);
@@ -983,6 +1061,16 @@ function toggleLeaderboardMode() {
   renderLeaderboard();
 }
 
+function showPreviousReplayStep() {
+  if (!gameCompleted || replayIndex <= 0) return;
+  applyReplayState(replayIndex - 1);
+}
+
+function showNextReplayStep() {
+  if (!gameCompleted || replayIndex >= replayStateKeys.length - 1) return;
+  applyReplayState(replayIndex + 1);
+}
+
 shuffleBtn.addEventListener("click", newGame);
 solveBtn.addEventListener("click", autoSolve);
 sizeSelect.addEventListener("change", () => {
@@ -995,11 +1083,26 @@ refreshRankBtn.addEventListener("click", () => {
   void refreshLeaderboard().catch(() => {});
 });
 toggleLeaderboardModeBtn.addEventListener("click", toggleLeaderboardMode);
+replayPrevBtn.addEventListener("click", showPreviousReplayStep);
+replayNextBtn.addEventListener("click", showNextReplayStep);
 
 document.addEventListener("keydown", (event) => {
   const tagName = document.activeElement?.tagName;
   if (tagName === "INPUT" || tagName === "SELECT" || tagName === "TEXTAREA") return;
-  if (isAutoSolving || gameCompleted) return;
+
+  if (gameCompleted) {
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      showPreviousReplayStep();
+    }
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      showNextReplayStep();
+    }
+    return;
+  }
+
+  if (isAutoSolving) return;
 
   const emptyIndex = getEmptyIndex();
   const row = Math.floor(emptyIndex / size);

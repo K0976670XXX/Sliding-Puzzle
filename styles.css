@@ -215,6 +215,29 @@ button:disabled {
   min-width: 160px;
 }
 
+.replay-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.replay-status {
+  min-width: 68px;
+  text-align: center;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.replay-arrow-btn {
+  width: 46px;
+  min-width: 46px;
+  height: 46px;
+  padding: 0;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
 .status-item {
   display: flex;
   align-items: baseline;
@@ -467,6 +490,10 @@ button:disabled {
   .status-actions button {
     width: 100%;
     min-width: 0;
+  }
+
+  .replay-controls {
+    gap: 8px;
   }
 
   .board {
