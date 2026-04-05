@@ -264,6 +264,7 @@ button:disabled {
 .game-area {
   display: grid;
   min-width: 0;
+  gap: 16px;
 }
 
 .board-wrap {
@@ -430,6 +431,10 @@ button:disabled {
   .panel,
   .board-wrap {
     padding: 14px;
+  }
+
+  .game-area {
+    gap: 14px;
   }
 
   .inline-field,
