@@ -29,7 +29,7 @@ const LEADERBOARD_MODES = {
 };
 const SOLVER_LIMITS = {
   3: { maxExpanded: 50000, maxDurationMs: 1500 },
-  4: { maxExpanded: 250000, maxDurationMs: 4000 },
+  4: { maxExpanded: 500000, maxDurationMs: 8000 },
 };
 
 let size = Number(sizeSelect.value);
