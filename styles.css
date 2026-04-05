@@ -206,6 +206,15 @@ button:disabled {
   gap: 12px;
 }
 
+.status-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.status-actions button {
+  min-width: 160px;
+}
+
 .status-item {
   display: flex;
   align-items: baseline;
@@ -449,6 +458,15 @@ button:disabled {
 
   .panel-actions button {
     width: 100%;
+  }
+
+  .status-actions {
+    justify-content: stretch;
+  }
+
+  .status-actions button {
+    width: 100%;
+    min-width: 0;
   }
 
   .board {

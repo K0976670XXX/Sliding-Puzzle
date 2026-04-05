@@ -28,8 +28,8 @@ const LEADERBOARD_MODES = {
   speed: "speed",
 };
 const SOLVER_LIMITS = {
-  3: { maxExpanded: 50000, maxDurationMs: 1500 },
-  4: { maxExpanded: 500000, maxDurationMs: 8000 },
+  3: { maxExpanded: 50000, maxDurationMs: 3000 },
+  4: { maxExpanded: 2500000, maxDurationMs: 30000 },
 };
 
 let size = Number(sizeSelect.value);
