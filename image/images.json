@@ -329,6 +329,18 @@
       "name": "Image 54",
       "file": "image (54).jpg",
       "alt": "Puzzle image 54 preview"
+    },
+    {
+      "id": "gif-0",
+      "name": "gif 0",
+      "file": "gif (0).jpg",
+      "alt": "Puzzle gif 0 preview"
+    },
+    {
+      "id": "gif-1",
+      "name": "gif 1",
+      "file": "gif (1).jpg",
+      "alt": "Puzzle gif 1 preview"
     }
   ]
 }
