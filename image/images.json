@@ -1,10 +1,10 @@
 {
   "images": [
     {
-      "id": "default-puzzle",
-      "name": "Default Puzzle",
-      "file": "default-puzzle.png",
-      "alt": "Default puzzle preview"
+      "id": "image-0",
+      "name": "Image 0",
+      "file": "image (0).jpg",
+      "alt": "Puzzle image 0 preview"
     },
     {
       "id": "image-1",
@@ -179,6 +179,156 @@
       "name": "Image 29",
       "file": "image (29).jpg",
       "alt": "Puzzle image 29 preview"
+    },
+    {
+      "id": "image-30",
+      "name": "Image 30",
+      "file": "image (30).jpg",
+      "alt": "Puzzle image 30 preview"
+    },
+    {
+      "id": "image-31",
+      "name": "Image 31",
+      "file": "image (31).jpg",
+      "alt": "Puzzle image 31 preview"
+    },
+    {
+      "id": "image-32",
+      "name": "Image 32",
+      "file": "image (32).jpg",
+      "alt": "Puzzle image 32 preview"
+    },
+    {
+      "id": "image-33",
+      "name": "Image 33",
+      "file": "image (33).jpg",
+      "alt": "Puzzle image 33 preview"
+    },
+    {
+      "id": "image-34",
+      "name": "Image 34",
+      "file": "image (34).jpg",
+      "alt": "Puzzle image 34 preview"
+    },
+    {
+      "id": "image-35",
+      "name": "Image 35",
+      "file": "image (35).jpg",
+      "alt": "Puzzle image 35 preview"
+    },
+    {
+      "id": "image-36",
+      "name": "Image 36",
+      "file": "image (36).jpg",
+      "alt": "Puzzle image 36 preview"
+    },
+    {
+      "id": "image-37",
+      "name": "Image 37",
+      "file": "image (37).jpg",
+      "alt": "Puzzle image 37 preview"
+    },
+    {
+      "id": "image-38",
+      "name": "Image 38",
+      "file": "image (38).jpg",
+      "alt": "Puzzle image 38 preview"
+    },
+    {
+      "id": "image-39",
+      "name": "Image 39",
+      "file": "image (39).jpg",
+      "alt": "Puzzle image 39 preview"
+    },
+    {
+      "id": "image-40",
+      "name": "Image 40",
+      "file": "image (40).jpg",
+      "alt": "Puzzle image 40 preview"
+    },
+    {
+      "id": "image-41",
+      "name": "Image 41",
+      "file": "image (41).jpg",
+      "alt": "Puzzle image 41 preview"
+    },
+    {
+      "id": "image-42",
+      "name": "Image 42",
+      "file": "image (42).jpg",
+      "alt": "Puzzle image 42 preview"
+    },
+    {
+      "id": "image-43",
+      "name": "Image 43",
+      "file": "image (43).jpg",
+      "alt": "Puzzle image 43 preview"
+    },
+    {
+      "id": "image-44",
+      "name": "Image 44",
+      "file": "image (44).jpg",
+      "alt": "Puzzle image 44 preview"
+    },
+    {
+      "id": "image-45",
+      "name": "Image 45",
+      "file": "image (45).jpg",
+      "alt": "Puzzle image 45 preview"
+    },
+    {
+      "id": "image-46",
+      "name": "Image 46",
+      "file": "image (46).jpg",
+      "alt": "Puzzle image 46 preview"
+    },
+    {
+      "id": "image-47",
+      "name": "Image 47",
+      "file": "image (47).jpg",
+      "alt": "Puzzle image 47 preview"
+    },
+    {
+      "id": "image-48",
+      "name": "Image 48",
+      "file": "image (48).jpg",
+      "alt": "Puzzle image 48 preview"
+    },
+    {
+      "id": "image-49",
+      "name": "Image 49",
+      "file": "image (49).jpg",
+      "alt": "Puzzle image 49 preview"
+    },
+    {
+      "id": "image-50",
+      "name": "Image 50",
+      "file": "image (50).jpg",
+      "alt": "Puzzle image 50 preview"
+    },
+    {
+      "id": "image-51",
+      "name": "Image 51",
+      "file": "image (51).jpg",
+      "alt": "Puzzle image 51 preview"
+    },
+    {
+      "id": "image-52",
+      "name": "Image 52",
+      "file": "image (52).jpg",
+      "alt": "Puzzle image 52 preview"
+    },
+    {
+      "id": "image-53",
+      "name": "Image 53",
+      "file": "image (53).jpg",
+      "alt": "Puzzle image 53 preview"
+    },
+    {
+      "id": "image-54",
+      "name": "Image 54",
+      "file": "image (54).jpg",
+      "alt": "Puzzle image 54 preview"
     }
   ]
 }
