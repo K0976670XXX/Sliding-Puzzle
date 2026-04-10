@@ -22,7 +22,7 @@ for i in range(0, gif_num):
     data["images"].append({
         "id": f"gif-{i}",
         "name": f"gif {i}",
-        "file": f"gif ({i}).jpg",
+        "file": f"gif ({i}).gif",
         "alt": f"Puzzle gif {i} preview"
     })
 
