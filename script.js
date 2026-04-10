@@ -39,8 +39,9 @@ const SOLVER_LIMITS = {
 let size = Number(sizeSelect.value);
 let tiles = [];
 let moves = 0;
-let seconds = 0;
+let elapsedMs = 0;
 let timerId = null;
+let timerStartedAtMs = 0;
 let started = false;
 let moveHistory = [];
 let stateHistory = [];
@@ -78,23 +79,47 @@ function buildSolvedState(n) {
   return [...Array(n * n - 1).keys()].map((index) => index + 1).concat(0);
 }
 
-function formatTime(totalSeconds) {
-  const hours = Math.floor(totalSeconds / 3600).toString().padStart(2, "0");
-  const mins = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, "0");
-  const secs = (totalSeconds % 60).toString().padStart(2, "0");
-  return `${hours}:${mins}:${secs}`;
+function formatTime(totalMilliseconds) {
+  const normalizedMs = Math.max(0, Math.floor(Number(totalMilliseconds) || 0));
+  const hours = Math.floor(normalizedMs / 3600000).toString().padStart(2, "0");
+  const mins = Math.floor((normalizedMs % 3600000) / 60000).toString().padStart(2, "0");
+  const secs = Math.floor((normalizedMs % 60000) / 1000).toString().padStart(2, "0");
+  const ms = (normalizedMs % 1000).toString().padStart(3, "0");
+  return `${hours}:${mins}:${secs}.${ms}`;
 }
 
-function parseTimeToSeconds(value) {
-  const parts = String(value || "")
-    .split(":")
-    .map((part) => Number(part));
+function parseTimeToMilliseconds(value) {
+  const rawValue = String(value || "").trim();
+  if (!rawValue) return Number.MAX_SAFE_INTEGER;
 
-  if (parts.some((part) => Number.isNaN(part))) return Number.MAX_SAFE_INTEGER;
-  if (parts.length === 3) return (parts[0] * 3600) + (parts[1] * 60) + parts[2];
-  if (parts.length === 2) return (parts[0] * 60) + parts[1];
-  if (parts.length === 1) return parts[0];
-  return Number.MAX_SAFE_INTEGER;
+  const parts = rawValue.split(":");
+  if (parts.length < 1 || parts.length > 3) return Number.MAX_SAFE_INTEGER;
+
+  const secondsPart = parts.pop();
+  const [secondsText, millisecondsText = "0"] = secondsPart.split(".");
+
+  const secondsValue = Number(secondsText);
+  const millisecondsValue = Number(millisecondsText.padEnd(3, "0").slice(0, 3));
+
+  if (!Number.isFinite(secondsValue) || !Number.isFinite(millisecondsValue)) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+
+  let hours = 0;
+  let minutes = 0;
+
+  if (parts.length === 2) {
+    hours = Number(parts[0]);
+    minutes = Number(parts[1]);
+  } else if (parts.length === 1) {
+    minutes = Number(parts[0]);
+  }
+
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+
+  return (hours * 3600000) + (minutes * 60000) + (secondsValue * 1000) + millisecondsValue;
 }
 
 class MinHeap {
@@ -160,7 +185,7 @@ class MinHeap {
 
 function updateStatus() {
   movesEl.textContent = String(moves);
-  timerEl.textContent = formatTime(seconds);
+  timerEl.textContent = formatTime(elapsedMs);
 }
 
 function setMessage(text = "") {
@@ -232,15 +257,21 @@ function isSolved() {
 function startTimer() {
   if (timerId) return;
 
+  timerStartedAtMs = Date.now() - elapsedMs;
   timerId = setInterval(() => {
-    seconds += 1;
+    elapsedMs = Date.now() - timerStartedAtMs;
     updateStatus();
-  }, 1000);
+  }, 33);
 }
 
 function stopTimer() {
+  if (timerId) {
+    elapsedMs = Date.now() - timerStartedAtMs;
+  }
   clearInterval(timerId);
   timerId = null;
+  timerStartedAtMs = 0;
+  updateStatus();
 }
 
 function getPlayerName() {
@@ -609,7 +640,7 @@ function shuffleByLegalMoves(steps = 200) {
 function resetProgress() {
   stopTimer();
   moves = 0;
-  seconds = 0;
+  elapsedMs = 0;
   started = false;
   gameCompleted = false;
   clearReplayTracking();
@@ -741,7 +772,7 @@ async function autoSolve() {
   setControlsDisabled(false);
   finishGame({
     allowRankSubmission: false,
-    customMessage: `已完成自動還原，總步數 ${moves}，時間 ${formatTime(seconds)}`,
+    customMessage: `已完成自動還原，總步數 ${moves}，時間 ${formatTime(elapsedMs)}`,
   });
 }
 
@@ -753,7 +784,7 @@ function normalizeRankEntries(entries) {
     .map((entry) => ({
       name: String(entry.name || "").trim(),
       Steps: Number(entry.Steps),
-      Time: String(entry.Time || "00:00:00"),
+      Time: String(entry.Time || "00:00:00.000"),
     }))
     .filter((entry) => entry.name && Number.isFinite(entry.Steps));
 }
@@ -761,14 +792,14 @@ function normalizeRankEntries(entries) {
 function sortRankEntries(entries, mode = leaderboardMode) {
   return [...entries].sort((left, right) => {
     if (mode === LEADERBOARD_MODES.speed) {
-      const timeDifference = parseTimeToSeconds(left.Time) - parseTimeToSeconds(right.Time);
+      const timeDifference = parseTimeToMilliseconds(left.Time) - parseTimeToMilliseconds(right.Time);
       if (timeDifference !== 0) return timeDifference;
       if (left.Steps !== right.Steps) return left.Steps - right.Steps;
       return left.name.localeCompare(right.name, "zh-Hant");
     }
 
     if (left.Steps !== right.Steps) return left.Steps - right.Steps;
-    const timeDifference = parseTimeToSeconds(left.Time) - parseTimeToSeconds(right.Time);
+    const timeDifference = parseTimeToMilliseconds(left.Time) - parseTimeToMilliseconds(right.Time);
     if (timeDifference !== 0) return timeDifference;
     return left.name.localeCompare(right.name, "zh-Hant");
   });
@@ -853,7 +884,7 @@ function getBestRankForName(entries, name, mode) {
   if (!sameNameEntries.length) return null;
 
   if (mode === LEADERBOARD_MODES.speed) {
-    return Math.min(...sameNameEntries.map((entry) => parseTimeToSeconds(entry.Time)));
+    return Math.min(...sameNameEntries.map((entry) => parseTimeToMilliseconds(entry.Time)));
   }
 
   return Math.min(...sameNameEntries.map((entry) => entry.Steps));
@@ -891,10 +922,10 @@ async function maybeSubmitRank(result) {
     playerName,
     LEADERBOARD_MODES.speed,
   );
-  const finalTimeSeconds = parseTimeToSeconds(finalTime);
+  const finalTimeMs = parseTimeToMilliseconds(finalTime);
 
   const improvedSteps = stepBest === null || finalMoves < stepBest;
-  const improvedSpeed = speedBest === null || finalTimeSeconds < speedBest;
+  const improvedSpeed = speedBest === null || finalTimeMs < speedBest;
 
   if (!improvedSteps && !improvedSpeed) {
     setRankUpdateStatus(`未送出榜單：最佳步數 ${stepBest}，最佳時間 ${formatTime(speedBest)}。`);
@@ -954,7 +985,7 @@ function finishGame(options = {}) {
   const result = {
     playerName: getPlayerName(),
     moves,
-    time: formatTime(seconds),
+    time: formatTime(elapsedMs),
   };
   const message = customMessage || `完成！步數 ${result.moves}，時間 ${result.time}`;
   setMessage(message);
