@@ -4,6 +4,7 @@ const timerEl = document.getElementById("timer");
 const messageEl = document.getElementById("message");
 const rankUpdateStatusEl = document.getElementById("rankUpdateStatus");
 const shuffleBtn = document.getElementById("shuffleBtn");
+const hintBtn = document.getElementById("hintBtn");
 const solveBtn = document.getElementById("solveBtn");
 const sizeSelect = document.getElementById("sizeSelect");
 const previewImage = document.getElementById("previewImage");
@@ -48,6 +49,7 @@ let stateHistory = [];
 let stateDepthByKey = new Map();
 let replayStateKeys = [];
 let replayIndex = -1;
+let hintFlashTimeoutId = null;
 let isAutoSolving = false;
 let solveRunId = 0;
 let gameCompleted = false;
@@ -348,9 +350,41 @@ function updateReplayControls() {
   replayStatusEl.textContent = `${replayIndex} / ${getReplayStepCount()}`;
 }
 
+function clearHintHighlight() {
+  if (hintFlashTimeoutId) {
+    clearTimeout(hintFlashTimeoutId);
+    hintFlashTimeoutId = null;
+  }
+
+  const hintedTile = boardEl.querySelector(".tile.hint-target");
+  if (hintedTile) {
+    hintedTile.classList.remove("hint-target");
+  }
+}
+
+function flashHintTile(tileValue) {
+  clearHintHighlight();
+
+  const tile = boardEl.querySelector(`.tile[data-tile-value="${tileValue}"]`);
+  if (!tile) return;
+
+  tile.classList.remove("hint-target");
+  void tile.offsetWidth;
+  tile.classList.add("hint-target");
+
+  hintFlashTimeoutId = window.setTimeout(() => {
+    tile.classList.remove("hint-target");
+    hintFlashTimeoutId = null;
+  }, 3000);
+}
+
 function updateSolveButtonVisibility() {
-  if (!solveBtn) return;
-  solveBtn.hidden = gameCompleted;
+  if (solveBtn) {
+    solveBtn.hidden = gameCompleted;
+  }
+  if (hintBtn) {
+    hintBtn.hidden = gameCompleted || size !== 3;
+  }
 }
 
 function applyReplayState(index) {
@@ -557,6 +591,9 @@ function applyCurrentImage({ rerender = true } = {}) {
 function setControlsDisabled(disabled) {
   shuffleBtn.disabled = disabled;
   sizeSelect.disabled = disabled;
+  if (hintBtn) {
+    hintBtn.disabled = disabled;
+  }
   solveBtn.disabled = disabled;
 }
 
@@ -572,6 +609,7 @@ function renderBoard() {
     const tile = document.createElement("button");
     tile.type = "button";
     tile.className = "tile";
+    tile.dataset.tileValue = String(value);
     tile.setAttribute("role", "gridcell");
 
     if (value === 0) {
@@ -643,6 +681,7 @@ function resetProgress() {
   elapsedMs = 0;
   started = false;
   gameCompleted = false;
+  clearHintHighlight();
   clearReplayTracking();
   updateSolveButtonVisibility();
   updateStatus();
@@ -774,6 +813,21 @@ async function autoSolve() {
     allowRankSubmission: false,
     customMessage: `已完成自動還原，總步數 ${moves}，時間 ${formatTime(elapsedMs)}`,
   });
+}
+
+function showHint() {
+  if (size !== 3 || gameCompleted || isAutoSolving || isSolved()) return;
+
+  const hintResult = findShortestSolution([...tiles], size);
+  const nextTileValue = hintResult.solution?.[0];
+
+  if (!Number.isFinite(nextTileValue)) {
+    setMessage("目前無法提供提示，請稍後再試。");
+    return;
+  }
+
+  flashHintTile(nextTileValue);
+  setMessage(`提示：下一步請移動 ${nextTileValue} 號方塊`);
 }
 
 function normalizeRankEntries(entries) {
@@ -979,6 +1033,7 @@ function finishGame(options = {}) {
   if (gameCompleted) return;
 
   gameCompleted = true;
+  clearHintHighlight();
   stopTimer();
   updateSolveButtonVisibility();
 
@@ -1103,6 +1158,7 @@ function showNextReplayStep() {
 }
 
 shuffleBtn.addEventListener("click", newGame);
+hintBtn.addEventListener("click", showHint);
 solveBtn.addEventListener("click", autoSolve);
 sizeSelect.addEventListener("change", () => {
   newGame();

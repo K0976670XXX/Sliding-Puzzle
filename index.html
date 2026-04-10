@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Sliding Puzzle</title>
   <link rel="stylesheet" href="styles.css">
-  <script defer src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7343628224568601" crossorigin="anonymous"></script>
   <link rel="icon" href="/icon.png">
   <link rel="apple-touch-icon" href="/icon.png">
 </head>
@@ -62,11 +61,12 @@
           </div>
           <div class="status-item">
             <span class="status-label">時間</span>
-            <strong id="timer">00:00:00</strong>
+            <strong id="timer">00:00:00.000</strong>
           </div>
           <p id="message" class="message"></p>
           <p id="rankUpdateStatus" class="rank-update-status"></p>
           <div class="status-actions">
+            <button id="hintBtn" type="button" class="secondary-btn">提示一步</button>
             <button id="solveBtn" type="button" class="success-btn">自動還原</button>
           </div>
           <div id="replayControls" class="replay-controls" hidden>
