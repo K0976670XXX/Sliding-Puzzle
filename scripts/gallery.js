@@ -11,25 +11,14 @@ const selectedDescriptionEl = document.getElementById("selectedDescription");
 const playSelectedBtn = document.getElementById("playSelectedBtn");
 const downloadSelectedBtn = document.getElementById("downloadSelectedBtn");
 
+const scriptUrl = document.currentScript?.src
+  ? new URL(document.currentScript.src, window.location.href)
+  : new URL(window.location.href);
+const appRootUrl = new URL("../", scriptUrl);
+
 let mediaCatalog = [];
 let selectedMediaId = "";
 let resizeRafId = 0;
-
-function getAppBaseUrl() {
-  const { origin, pathname } = window.location;
-  if (pathname.endsWith("/")) {
-    return new URL(origin + pathname);
-  }
-
-  const lastSlashIndex = pathname.lastIndexOf("/");
-  const lastSegment = pathname.slice(lastSlashIndex + 1);
-  const looksLikeFile = lastSegment.includes(".");
-  const normalizedPath = looksLikeFile
-    ? pathname.slice(0, lastSlashIndex + 1)
-    : `${pathname}/`;
-
-  return new URL(origin + normalizedPath);
-}
 
 function getMediaType(file) {
   return String(file).toLowerCase().endsWith(".gif") ? "GIF" : "IMAGE";
@@ -68,7 +57,7 @@ function getSelectedMedia() {
 }
 
 function buildPlayUrl(media) {
-  const playUrl = new URL("index.html", getAppBaseUrl());
+  const playUrl = new URL("index.html", appRootUrl);
   playUrl.searchParams.set("image", media.id);
   return playUrl.href;
 }
@@ -107,7 +96,7 @@ function updateSelectedMedia() {
     selectedTypeEl.textContent = "尚未選取";
     selectedTitleEl.textContent = "請先選擇一張圖片或 GIF";
     selectedDescriptionEl.textContent = "點選上方縮圖後，會在目前這一排的下方直接展開。";
-    playSelectedBtn.href = "index.html";
+    playSelectedBtn.href = new URL("index.html", appRootUrl).href;
     downloadSelectedBtn.removeAttribute("href");
     downloadSelectedBtn.removeAttribute("download");
     return;
@@ -137,6 +126,7 @@ function selectMedia(mediaId) {
 
 function renderMediaGrid() {
   mediaGridEl.querySelectorAll(".media-card").forEach((card) => card.remove());
+  mediaGridEl.querySelectorAll(".leaderboard-empty").forEach((emptyState) => emptyState.remove());
 
   if (!mediaCatalog.length) {
     const emptyState = document.createElement("p");
@@ -188,13 +178,20 @@ function renderMediaGrid() {
 }
 
 async function loadMediaCatalog() {
-  const manifestUrl = new URL(GALLERY_MANIFEST_PATH, getAppBaseUrl());
+  const manifestUrl = new URL(GALLERY_MANIFEST_PATH, appRootUrl);
   const response = await fetch(manifestUrl, { cache: "no-store" });
+  const payloadText = await response.text();
+
   if (!response.ok) {
     throw new Error(`素材清單讀取失敗：${response.status}`);
   }
 
-  const manifest = await response.json();
+  const trimmedPayload = payloadText.trim();
+  if (!trimmedPayload.startsWith("{") && !trimmedPayload.startsWith("[")) {
+    throw new Error(`素材清單不是 JSON：${manifestUrl.href}`);
+  }
+
+  const manifest = JSON.parse(payloadText);
   mediaCatalog = normalizeImageManifest(manifest, manifestUrl);
 }
 
