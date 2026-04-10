@@ -24,6 +24,7 @@ const IMAGE_FALLBACK_FILE = "default-puzzle.png";
 const STORAGE_KEYS = {
   playerName: "sliding-puzzle-player-name",
   imageId: "sliding-puzzle-image-id",
+  pendingImageId: "sliding-puzzle-pending-image-id",
   leaderboardMode: "sliding-puzzle-leaderboard-mode",
 };
 const LEADERBOARD_URL = "https://jsonhosting.com/api/json/d6856351/raw";

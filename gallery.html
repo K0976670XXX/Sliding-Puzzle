@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>圖片圖庫 | Sliding Puzzle</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="/icon.png">
+  <link rel="apple-touch-icon" href="/icon.png">
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <div class="header-top">
+        <div>
+          <p class="promo-eyebrow">圖片圖庫</p>
+          <h1>素材總覽</h1>
+          <p>點一下任一張圖片或 GIF，就會直接在該排下方展開預覽與操作按鈕。</p>
+        </div>
+        <div class="promo-actions">
+          <a class="button-link button-link-secondary" href="index.html">返回拼圖首頁</a>
+        </div>
+      </div>
+    </header>
+
+    <section class="panel gallery-grid-panel" aria-label="素材列表">
+      <div class="panel-header">
+        <h2>全部素材</h2>
+        <p id="galleryStatus" class="field-hint gallery-status" aria-live="polite">載入中...</p>
+      </div>
+      <div id="mediaGrid" class="media-grid">
+        <article id="mediaDetailCard" class="media-inline-detail" hidden>
+          <div class="media-detail-layout">
+            <div class="media-preview-frame">
+              <img id="selectedPreview" class="media-preview" alt="選取素材預覽">
+            </div>
+            <div class="media-detail-copy">
+              <p id="selectedType" class="promo-eyebrow">尚未選取</p>
+              <h3 id="selectedTitle" class="media-detail-title">請先選擇一張圖片或 GIF</h3>
+              <p id="selectedDescription" class="field-hint media-detail-text">點選上方縮圖後，會在目前這一排的下方直接展開。</p>
+              <div class="selected-actions">
+                <a id="playSelectedBtn" class="button-link" href="index.html">遊玩該圖片</a>
+                <a id="downloadSelectedBtn" class="button-link button-link-secondary" href="#" download>下載圖片</a>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <script src="scripts/gallery.js"></script>
+</body>
+</html>

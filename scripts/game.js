@@ -221,6 +221,32 @@ function getCurrentImage() {
   return imageCatalog[currentImageIndex] || null;
 }
 
+function getRequestedImageId() {
+  const params = new URLSearchParams(window.location.search);
+  const queryImageId = params.get("image");
+  if (queryImageId) return queryImageId.trim();
+
+  const pendingImageId = localStorage.getItem(STORAGE_KEYS.pendingImageId);
+  return pendingImageId ? pendingImageId.trim() : "";
+}
+
+function setCurrentImageById(imageId, { rerender = true } = {}) {
+  const nextIndex = imageCatalog.findIndex((item) => item.id === imageId);
+  if (nextIndex === -1) return false;
+
+  currentImageIndex = nextIndex;
+  applyCurrentImage({ rerender });
+  return true;
+}
+
+function applyRequestedImageSelection({ rerender = true } = {}) {
+  const requestedImageId = getRequestedImageId();
+  localStorage.removeItem(STORAGE_KEYS.pendingImageId);
+
+  if (!requestedImageId) return false;
+  return setCurrentImageById(requestedImageId, { rerender });
+}
+
 function serializeTiles() {
   return tiles.join(",");
 }
@@ -677,13 +703,19 @@ function moveTile(index, options = {}) {
   return true;
 }
 
-function newGame() {
+function newGame(options = {}) {
+  const { preserveImage = false } = options;
+
   cancelAutoSolve();
   size = Number(sizeSelect.value);
   usedAutoSolve = false;
   resetProgress();
   shuffleByLegalMoves(size * size * 30);
-  selectRandomImage({ rerender: false });
+  if (!preserveImage || !getCurrentImage()) {
+    selectRandomImage({ rerender: false });
+  } else {
+    applyCurrentImage({ rerender: false });
+  }
   renderBoard();
   renderLeaderboard();
 }
@@ -1147,7 +1179,8 @@ document.addEventListener("keydown", (event) => {
 async function initialize() {
   loadSavedPlayerName();
   await loadImageCatalog();
-  newGame();
+  const hasRequestedImage = applyRequestedImageSelection({ rerender: false });
+  newGame({ preserveImage: hasRequestedImage });
   updateLeaderboardModeButton();
 
   try {

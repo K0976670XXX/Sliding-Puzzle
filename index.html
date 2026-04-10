@@ -11,9 +11,23 @@
 <body>
   <main class="app">
     <header class="header">
-      <h1>Sliding Puzzle</h1>
-      <p>挑戰最少步數與最快時間，完成每一局拼圖。</p>
+      <div class="header-top">
+        <div>
+          <h1>Sliding Puzzle</h1>
+          <p>挑戰步數與速度排行榜，也可以用你喜歡的圖片來玩拼圖。</p>
+        </div>
+      </div>
     </header>
+
+    <section class="spotlight-grid compact-links" aria-label="站內連結">
+      <a
+        class="button-link spotlight-link"
+        href="https://store.line.me/stickershop/author/5851325/zh-Hant"
+        target="_blank"
+        rel="noreferrer noopener"
+      >LINE 貼圖</a>
+      <a class="button-link button-link-secondary spotlight-link" href="gallery.html">圖片圖庫</a>
+    </section>
 
     <div class="layout">
       <aside class="sidebar">
@@ -21,14 +35,14 @@
           <div class="field-group">
             <label for="playerName">玩家名稱</label>
             <div class="inline-field">
-              <input id="playerName" type="text" maxlength="20" placeholder="請輸入你的名字">
-              <button id="saveNameBtn" type="button" class="secondary-btn">儲存名字</button>
+              <input id="playerName" type="text" maxlength="20" placeholder="輸入你的名字">
+              <button id="saveNameBtn" type="button" class="secondary-btn">儲存名稱</button>
             </div>
-            <p class="field-hint">名稱會保存在目前瀏覽器中。</p>
+            <p class="field-hint">名稱會儲存在本機，送榜時會使用這個名字。</p>
           </div>
 
           <div class="field-group">
-            <label for="sizeSelect">遊戲尺寸</label>
+            <label for="sizeSelect">拼圖尺寸</label>
             <select id="sizeSelect">
               <option value="3" selected>3 x 3</option>
               <option value="4">4 x 4</option>
