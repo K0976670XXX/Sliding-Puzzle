@@ -4,7 +4,7 @@ import sys, os
 os.chdir(sys.path[0])#將當前環境位置設為當前"檔案位置"
 
 image_num = 55
-gif_num = 2
+gif_num = 3
 
 data = {
     "images": []
