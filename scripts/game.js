@@ -14,10 +14,6 @@ function getAppBaseUrl() {
   return new URL(origin + normalizedPath);
 }
 
-function buildSolvedState(n) {
-  return [...Array(n * n - 1).keys()].map((index) => index + 1).concat(0);
-}
-
 function formatTime(totalMilliseconds) {
   const normalizedMs = Math.max(0, Math.floor(Number(totalMilliseconds) || 0));
   const hours = Math.floor(normalizedMs / 3600000).toString().padStart(2, "0");
@@ -59,67 +55,6 @@ function parseTimeToMilliseconds(value) {
   }
 
   return (hours * 3600000) + (minutes * 60000) + (secondsValue * 1000) + millisecondsValue;
-}
-
-class MinHeap {
-  constructor(compare) {
-    this.compare = compare;
-    this.items = [];
-  }
-
-  get size() {
-    return this.items.length;
-  }
-
-  push(value) {
-    this.items.push(value);
-    this.bubbleUp(this.items.length - 1);
-  }
-
-  pop() {
-    if (this.items.length === 0) return null;
-    const top = this.items[0];
-    const last = this.items.pop();
-    if (this.items.length > 0) {
-      this.items[0] = last;
-      this.bubbleDown(0);
-    }
-    return top;
-  }
-
-  bubbleUp(index) {
-    let currentIndex = index;
-    while (currentIndex > 0) {
-      const parentIndex = Math.floor((currentIndex - 1) / 2);
-      if (this.compare(this.items[currentIndex], this.items[parentIndex]) >= 0) break;
-      [this.items[currentIndex], this.items[parentIndex]] = [this.items[parentIndex], this.items[currentIndex]];
-      currentIndex = parentIndex;
-    }
-  }
-
-  bubbleDown(index) {
-    let currentIndex = index;
-    const length = this.items.length;
-
-    while (true) {
-      const leftIndex = (currentIndex * 2) + 1;
-      const rightIndex = leftIndex + 1;
-      let smallestIndex = currentIndex;
-
-      if (leftIndex < length && this.compare(this.items[leftIndex], this.items[smallestIndex]) < 0) {
-        smallestIndex = leftIndex;
-      }
-
-      if (rightIndex < length && this.compare(this.items[rightIndex], this.items[smallestIndex]) < 0) {
-        smallestIndex = rightIndex;
-      }
-
-      if (smallestIndex === currentIndex) break;
-
-      [this.items[currentIndex], this.items[smallestIndex]] = [this.items[smallestIndex], this.items[currentIndex]];
-      currentIndex = smallestIndex;
-    }
-  }
 }
 
 function updateStatus() {
@@ -167,19 +102,6 @@ function getNeighbors(index) {
   if (row < size - 1) neighbors.push(index + size);
   if (col > 0) neighbors.push(index - 1);
   if (col < size - 1) neighbors.push(index + 1);
-
-  return neighbors;
-}
-
-function getNeighborsForSize(index, boardSize) {
-  const row = Math.floor(index / boardSize);
-  const col = index % boardSize;
-  const neighbors = [];
-
-  if (row > 0) neighbors.push(index - boardSize);
-  if (row < boardSize - 1) neighbors.push(index + boardSize);
-  if (col > 0) neighbors.push(index - 1);
-  if (col < boardSize - 1) neighbors.push(index + 1);
 
   return neighbors;
 }
@@ -364,178 +286,6 @@ function captureReplayForFinishedGame(stateKeys = replayStateKeys) {
   replayStateKeys = [...stateKeys];
   replayIndex = replayStateKeys.length - 1;
   updateReplayControls();
-}
-
-function createGoalLookup(boardSize) {
-  const total = boardSize * boardSize;
-  const goalRows = new Array(total);
-  const goalCols = new Array(total);
-
-  for (let value = 1; value < total; value += 1) {
-    goalRows[value] = Math.floor((value - 1) / boardSize);
-    goalCols[value] = (value - 1) % boardSize;
-  }
-
-  goalRows[0] = boardSize - 1;
-  goalCols[0] = boardSize - 1;
-
-  return { goalRows, goalCols };
-}
-
-function getLinearConflict(state, boardSize, goalRows, goalCols) {
-  let conflict = 0;
-
-  for (let row = 0; row < boardSize; row += 1) {
-    for (let colA = 0; colA < boardSize; colA += 1) {
-      const tileA = state[(row * boardSize) + colA];
-      if (tileA === 0 || goalRows[tileA] !== row) continue;
-
-      for (let colB = colA + 1; colB < boardSize; colB += 1) {
-        const tileB = state[(row * boardSize) + colB];
-        if (tileB === 0 || goalRows[tileB] !== row) continue;
-        if (goalCols[tileA] > goalCols[tileB]) conflict += 2;
-      }
-    }
-  }
-
-  for (let col = 0; col < boardSize; col += 1) {
-    for (let rowA = 0; rowA < boardSize; rowA += 1) {
-      const tileA = state[(rowA * boardSize) + col];
-      if (tileA === 0 || goalCols[tileA] !== col) continue;
-
-      for (let rowB = rowA + 1; rowB < boardSize; rowB += 1) {
-        const tileB = state[(rowB * boardSize) + col];
-        if (tileB === 0 || goalCols[tileB] !== col) continue;
-        if (goalRows[tileA] > goalRows[tileB]) conflict += 2;
-      }
-    }
-  }
-
-  return conflict;
-}
-
-function getHeuristic(state, boardSize, goalRows, goalCols) {
-  let distance = 0;
-
-  for (let index = 0; index < state.length; index += 1) {
-    const value = state[index];
-    if (value === 0) continue;
-
-    const row = Math.floor(index / boardSize);
-    const col = index % boardSize;
-    distance += Math.abs(goalRows[value] - row) + Math.abs(goalCols[value] - col);
-  }
-
-  return distance + getLinearConflict(state, boardSize, goalRows, goalCols);
-}
-
-function reconstructSolution(goalKey, parentByKey, moveByKey) {
-  const solution = [];
-  let currentKey = goalKey;
-
-  while (parentByKey.get(currentKey) !== null) {
-    solution.push(moveByKey.get(currentKey));
-    currentKey = parentByKey.get(currentKey);
-  }
-
-  return solution.reverse();
-}
-
-function findShortestSolution(startState, boardSize) {
-  if (boardSize > 4) {
-    return {
-      solution: null,
-      reason: "oversize",
-    };
-  }
-
-  const limits = SOLVER_LIMITS[boardSize] || SOLVER_LIMITS[4];
-  const goalState = buildSolvedState(boardSize);
-  const goalKey = goalState.join(",");
-  const startKey = startState.join(",");
-
-  if (startKey === goalKey) {
-    return {
-      solution: [],
-      reason: "solved",
-    };
-  }
-
-  const { goalRows, goalCols } = createGoalLookup(boardSize);
-  const openSet = new MinHeap((left, right) => {
-    if (left.f !== right.f) return left.f - right.f;
-    return left.h - right.h;
-  });
-  const parentByKey = new Map([[startKey, null]]);
-  const moveByKey = new Map();
-  const bestCostByKey = new Map([[startKey, 0]]);
-  const startedAt = performance.now();
-  let expanded = 0;
-  const startH = getHeuristic(startState, boardSize, goalRows, goalCols);
-
-  openSet.push({
-    state: [...startState],
-    key: startKey,
-    zeroIndex: startState.indexOf(0),
-    g: 0,
-    h: startH,
-    f: startH,
-  });
-
-  while (openSet.size > 0) {
-    const current = openSet.pop();
-    if (!current) break;
-
-    if (current.g !== bestCostByKey.get(current.key)) {
-      continue;
-    }
-
-    if (current.key === goalKey) {
-      return {
-        solution: reconstructSolution(goalKey, parentByKey, moveByKey),
-        reason: "shortest",
-      };
-    }
-
-    expanded += 1;
-    if (expanded > limits.maxExpanded || (performance.now() - startedAt) > limits.maxDurationMs) {
-      return {
-        solution: null,
-        reason: "timeout",
-      };
-    }
-
-    const neighborIndexes = getNeighborsForSize(current.zeroIndex, boardSize);
-    for (const tileIndex of neighborIndexes) {
-      const nextState = [...current.state];
-      const movedTile = nextState[tileIndex];
-      [nextState[current.zeroIndex], nextState[tileIndex]] = [nextState[tileIndex], nextState[current.zeroIndex]];
-
-      const nextKey = nextState.join(",");
-      const nextG = current.g + 1;
-      if (nextG >= (bestCostByKey.get(nextKey) ?? Infinity)) {
-        continue;
-      }
-
-      const nextH = getHeuristic(nextState, boardSize, goalRows, goalCols);
-      bestCostByKey.set(nextKey, nextG);
-      parentByKey.set(nextKey, current.key);
-      moveByKey.set(nextKey, movedTile);
-      openSet.push({
-        state: nextState,
-        key: nextKey,
-        zeroIndex: tileIndex,
-        g: nextG,
-        h: nextH,
-        f: nextG + nextH,
-      });
-    }
-  }
-
-  return {
-    solution: null,
-    reason: "unreachable",
-  };
 }
 
 function applyCurrentImage({ rerender = true } = {}) {
@@ -738,18 +488,31 @@ async function autoSolve() {
   await wait(20);
   if (runId !== solveRunId) return;
 
-  const shortestResult = findShortestSolution([...tiles], size);
+  const fallbackSolution = [...moveHistory].reverse();
+  const shortestResult = findShortestSolution([...tiles], size, { fallbackSolution });
   let solution = shortestResult.solution;
-  let solvingMessage = "正在執行最短路徑還原...";
+  let solvingMessage = "正在計算自動還原路徑...";
 
-  if (!solution) {
-    solution = [...moveHistory].reverse();
-    if (shortestResult.reason === "oversize") {
-      solvingMessage = "5x5 / 6x6 最短路徑搜尋成本過高，改用回溯還原。";
+  if (solution) {
+    if (shortestResult.method === "bfs") {
+      solvingMessage = "3x3 使用 BFS 找到最佳解，正在自動還原...";
+    } else if (shortestResult.method === "weighted-a*") {
+      solvingMessage = "4x4 使用 Weighted A* + Linear Conflict 搜尋中，正在自動還原...";
+    } else if (shortestResult.method === "layered") {
+      solvingMessage = "5x5 / 6x6 使用分階段解法，正在自動還原...";
+    } else if (shortestResult.method === "layered-guided") {
+      solvingMessage = "5x5 / 6x6 使用分階段解法 + 導引路徑補強，正在自動還原...";
+    } else if (shortestResult.method === "rollback") {
+      solvingMessage = "5x5 / 6x6 分階段搜尋未收斂，改用回溯路徑穩定還原...";
+    }
+  } else {
+    solution = fallbackSolution;
+    if (shortestResult.method === "layered") {
+      solvingMessage = "分階段解法未完成，改用回溯還原。";
     } else if (shortestResult.reason === "timeout") {
-      solvingMessage = "最短路徑計算時間過長，改用回溯還原。";
+      solvingMessage = "求解計算時間過長，改用回溯還原。";
     } else {
-      solvingMessage = "最短路徑計算失敗，改用回溯還原。";
+      solvingMessage = "求解計算失敗，改用回溯還原。";
     }
   }
 

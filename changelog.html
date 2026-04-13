@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>版本更新 | Sliding Puzzle</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="/icon.png">
+  <link rel="apple-touch-icon" href="/icon.png">
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <div class="header-top">
+        <div>
+          <p class="promo-eyebrow">Version Notes</p>
+          <h1>版本更新記錄</h1>
+          <p>整理 Sliding Puzzle 的主要更新內容，最新版本會顯示在最上方。</p>
+        </div>
+        <div class="promo-actions">
+          <a class="button-link button-link-secondary" href="index.html">返回首頁</a>
+        </div>
+      </div>
+    </header>
+
+    <section class="panel changelog-panel" aria-label="版本更新記錄">
+      <div class="changelog-list">
+        <article class="changelog-entry">
+          <div class="changelog-heading">
+            <h2>2026/04/13</h2>
+          </div>
+          <ul class="changelog-items">
+            <li>新增版本更新紀錄頁面，方便整理近期改版內容</li>
+            <li>自動還原算法優化，求解流程與回退判斷更加穩定</li>
+            <li>4x4 自動求解改採 Weighted A*，兼顧速度與實際可用性</li>
+            <li>5x5、6x6 改採分階段解法，逐層鎖定外圈後再收尾核心區域</li>
+          </ul>
+        </article>
+
+        <article class="changelog-entry changelog-entry-major">
+          <div class="changelog-heading">
+            <h2>2026/04/11</h2>
+            <span class="changelog-badge">重大更新</span>
+          </div>
+          <ul class="changelog-items">
+            <li>圖片數量擴充至 55 張，後續再增加至 123 張</li>
+            <li>3x3 新增「提示一步」功能，方便新手快速上手</li>
+            <li>預設難度由 4x4 改為 3x3</li>
+            <li>新增 3 張 GIF 圖片</li>
+            <li>新增圖片庫總覽，可自行挑選圖案並下載圖片</li>
+            <li>新增 LINE 貼圖連結</li>
+          </ul>
+        </article>
+
+        <article class="changelog-entry">
+          <div class="changelog-heading">
+            <h2>2026/04/10</h2>
+          </div>
+          <ul class="changelog-items">
+            <li>排行榜時間精度提升至毫秒（ms）</li>
+          </ul>
+        </article>
+
+        <article class="changelog-entry">
+          <div class="changelog-heading">
+            <h2>2026/04/05</h2>
+            <span class="changelog-badge">重大更新</span>
+          </div>
+          <ul class="changelog-items">
+            <li>拼圖外觀調整為直角設計，提升高難度圖案辨識度</li>
+            <li>5x5、6x6 新增編號，降低大型盤面的辨識難度</li>
+            <li>新增速度排行榜，記錄通關時間</li>
+            <li>網址更新為 <a href="https://sliding-puzzle.pages.dev/" target="_blank" rel="noreferrer noopener">https://sliding-puzzle.pages.dev/</a></li>
+            <li>新增網頁 icon，支援手機 Web App</li>
+            <li>新增移動回放功能，可檢視解題過程</li>
+            <li>自動求解優化：3x3、4x4 改用 BFS 最佳解，若計算時間過長則自動回退</li>
+          </ul>
+        </article>
+
+        <article class="changelog-entry changelog-entry-major">
+          <div class="changelog-heading">
+            <h2>2026/04/04</h2>
+            <span class="changelog-badge">重大更新</span>
+          </div>
+          <ul class="changelog-items">
+            <li>原圖預覽尺寸調整，統一顯示為正方形</li>
+            <li>新增步數排行榜功能</li>
+            <li>新增圖案輪換功能</li>
+            <li>圖片數量擴充至 30 張</li>
+          </ul>
+        </article>
+
+        <article class="changelog-entry">
+          <div class="changelog-heading">
+            <h2>2026/03/30</h2>
+          </div>
+          <ul class="changelog-items">
+            <li>實驗室學長深度遊玩並提供大量改進建議</li>
+          </ul>
+        </article>
+
+        <article class="changelog-entry">
+          <div class="changelog-heading">
+            <h2>2026/02/25</h2>
+          </div>
+          <ul class="changelog-items">
+            <li>第一版雛型完成，推出數字版 Sliding Puzzle</li>
+            <li>支援 3x3、4x4、5x5 三種尺寸</li>
+            <li>與朋友討論後，開始規劃加入圖案玩法</li>
+            <li>新增自動還原功能，初版採用簡單回朔（Backtracking）策略</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
