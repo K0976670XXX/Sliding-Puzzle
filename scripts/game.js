@@ -65,6 +65,18 @@ function updateStatus() {
       reviewSolveBtn.hidden = true;
       reviewSolveBtn.disabled = true;
     }
+    if (reviewSolveBtn) {
+      reviewSolveBtn.hidden = true;
+      reviewSolveBtn.disabled = true;
+    }
+    if (reviewSolveBtn) {
+      reviewSolveBtn.hidden = true;
+      reviewSolveBtn.disabled = true;
+    }
+    if (reviewSolveBtn) {
+      reviewSolveBtn.hidden = true;
+      reviewSolveBtn.disabled = true;
+    }
     return;
   }
 
@@ -239,7 +251,7 @@ function recordReplayState() {
 }
 
 function canUseAutoReplayReference() {
-  return size <= 4;
+  return size === 3 || size === 4;
 }
 
 function getDisplayedReplayStateKeys() {
@@ -541,6 +553,18 @@ function resetProgress() {
   clearReviewState();
   clearHintHighlight();
   clearReplayTracking();
+  if (autoReplayInfoEl) {
+    autoReplayInfoEl.hidden = true;
+    autoReplayInfoEl.textContent = "自動還原：-- 步";
+  }
+  if (replayRouteToggleBtn) {
+    replayRouteToggleBtn.hidden = true;
+    replayRouteToggleBtn.disabled = true;
+  }
+  if (reviewSolveBtn) {
+    reviewSolveBtn.hidden = true;
+    reviewSolveBtn.disabled = true;
+  }
   updateSolveButtonVisibility();
   updateStatus();
   setMessage("");
