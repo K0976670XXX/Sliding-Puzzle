@@ -58,6 +58,16 @@ function parseTimeToMilliseconds(value) {
 }
 
 function updateStatus() {
+  if (reviewComparison && !isReviewMode) {
+    movesEl.textContent = `${reviewComparison.reviewMoves}(${reviewComparison.originalMoves})`;
+    timerEl.textContent = `${formatTime(reviewComparison.reviewElapsedMs)}(${formatTime(reviewComparison.originalElapsedMs)})`;
+    if (reviewSolveBtn) {
+      reviewSolveBtn.hidden = true;
+      reviewSolveBtn.disabled = true;
+    }
+    return;
+  }
+
   movesEl.textContent = String(moves);
   timerEl.textContent = formatTime(elapsedMs);
 }
@@ -185,6 +195,17 @@ function clearReplayTracking() {
   replayIndex = -1;
 }
 
+function clearReviewState() {
+  isReviewMode = false;
+  reviewSourceReplayStateKeys = [];
+  reviewSourceMoves = 0;
+  reviewSourceElapsedMs = 0;
+  reviewComparison = null;
+  autoReplayStateKeys = [];
+  autoReplayStepCount = null;
+  replayRouteMode = "player";
+}
+
 function resetReplayTracking() {
   replayStateKeys = [serializeTiles()];
   replayIndex = replayStateKeys.length - 1;
@@ -209,30 +230,140 @@ function recordCurrentState(movedValue) {
 }
 
 function recordReplayState() {
+  replayRouteMode = "player";
+  if (replayIndex < replayStateKeys.length - 1) {
+    replayStateKeys = replayStateKeys.slice(0, replayIndex + 1);
+  }
   replayStateKeys.push(serializeTiles());
   replayIndex = replayStateKeys.length - 1;
 }
 
+function canUseAutoReplayReference() {
+  return size <= 4;
+}
+
+function getDisplayedReplayStateKeys() {
+  if (replayRouteMode === "auto" && autoReplayStateKeys.length) {
+    return autoReplayStateKeys;
+  }
+
+  return replayStateKeys;
+}
+
 function getReplayStepCount() {
-  return Math.max(replayStateKeys.length - 1, 0);
+  return Math.max(getDisplayedReplayStateKeys().length - 1, 0);
+}
+
+function applyTileMoveToState(state, boardSize, movedTile) {
+  const nextState = [...state];
+  const zeroIndex = nextState.indexOf(0);
+  const tileIndex = nextState.indexOf(movedTile);
+
+  if (zeroIndex === -1 || tileIndex === -1) return null;
+  if (!getNeighborsForSize(zeroIndex, boardSize).includes(tileIndex)) return null;
+
+  [nextState[zeroIndex], nextState[tileIndex]] = [nextState[tileIndex], nextState[zeroIndex]];
+  return nextState;
+}
+
+function buildReplayStateKeysFromMoves(startState, moveSequence, boardSize) {
+  const states = [startState.join(",")];
+  let currentState = [...startState];
+
+  for (const movedTile of moveSequence) {
+    const nextState = applyTileMoveToState(currentState, boardSize, movedTile);
+    if (!nextState) return [];
+    currentState = nextState;
+    states.push(currentState.join(","));
+  }
+
+  return states;
+}
+
+async function prepareAutoReplayReference() {
+  autoReplayStateKeys = [];
+  autoReplayStepCount = null;
+  replayRouteMode = "player";
+
+  if (!canUseAutoReplayReference() || !reviewSourceReplayStateKeys.length) {
+    return false;
+  }
+
+  const startState = reviewSourceReplayStateKeys[0].split(",").map(Number);
+  const result = findShortestSolution(startState, size);
+  if (!result?.solution?.length && !(Array.isArray(result?.solution) && result.solution.length === 0)) {
+    return false;
+  }
+
+  const nextReplayStateKeys = buildReplayStateKeysFromMoves(startState, result.solution, size);
+  if (!nextReplayStateKeys.length) {
+    return false;
+  }
+
+  autoReplayStateKeys = nextReplayStateKeys;
+  autoReplayStepCount = Math.max(nextReplayStateKeys.length - 1, 0);
+  return true;
 }
 
 function updateReplayControls() {
   if (!replayControlsEl) return;
 
-  const hasReplay = gameCompleted && replayStateKeys.length > 1 && replayIndex >= 0;
+  const displayedReplayStateKeys = getDisplayedReplayStateKeys();
+  const hasReplay = (gameCompleted || isReviewMode) && replayIndex >= 0 && (displayedReplayStateKeys.length > 1 || isReviewMode);
   replayControlsEl.hidden = !hasReplay;
 
   if (!hasReplay) {
     replayPrevBtn.disabled = true;
     replayNextBtn.disabled = true;
     replayStatusEl.textContent = "0 / 0";
+    if (autoReplayInfoEl) {
+      autoReplayInfoEl.hidden = true;
+      autoReplayInfoEl.textContent = "自動還原：-- 步";
+    }
+    if (replayRouteToggleBtn) {
+      replayRouteToggleBtn.hidden = true;
+      replayRouteToggleBtn.disabled = true;
+      replayRouteToggleBtn.textContent = "查看自動還原";
+    }
+    if (reviewModeBtn) {
+      reviewModeBtn.textContent = "開始復盤";
+      reviewModeBtn.hidden = true;
+      reviewModeBtn.disabled = true;
+    }
     return;
   }
 
   replayPrevBtn.disabled = replayIndex <= 0;
-  replayNextBtn.disabled = replayIndex >= replayStateKeys.length - 1;
+  replayNextBtn.disabled = replayIndex >= displayedReplayStateKeys.length - 1;
   replayStatusEl.textContent = `${replayIndex} / ${getReplayStepCount()}`;
+  if (autoReplayInfoEl) {
+    autoReplayInfoEl.hidden = !canUseAutoReplayReference() || autoReplayStepCount === null;
+    autoReplayInfoEl.textContent = autoReplayStepCount === null
+      ? "自動還原：-- 步"
+      : `自動還原：${autoReplayStepCount} 步`;
+  }
+  if (replayRouteToggleBtn) {
+    const canToggleReplayRoute = canUseAutoReplayReference() && autoReplayStateKeys.length > 1;
+    replayRouteToggleBtn.hidden = !canToggleReplayRoute;
+    replayRouteToggleBtn.disabled = !canToggleReplayRoute;
+    replayRouteToggleBtn.textContent = replayRouteMode === "auto" ? "查看玩家路徑" : "查看自動還原";
+  }
+  if (reviewSolveBtn) {
+    reviewSolveBtn.hidden = !isReviewMode;
+    reviewSolveBtn.disabled = !isReviewMode || isAutoSolving || replayRouteMode === "auto" || isSolved();
+  }
+  if (reviewModeBtn) {
+    reviewModeBtn.textContent = isReviewMode ? "結束復盤" : "開始復盤";
+    reviewModeBtn.hidden = !gameCompleted || isReviewMode;
+    reviewModeBtn.disabled = isAutoSolving || !gameCompleted;
+  }
+  if (isReviewMode) {
+    if (canUseAutoReplayReference() && autoReplayStepCount !== null) {
+      setRankUpdateStatus(`復盤參考：自動還原最佳步數 ${autoReplayStepCount} 步，目前查看${replayRouteMode === "auto" ? "自動還原路徑" : "玩家路徑"}。`);
+    } else {
+      setRankUpdateStatus("復盤模式中的調整不會送出排行榜成績。");
+    }
+  }
 }
 
 function clearHintHighlight() {
@@ -265,19 +396,23 @@ function flashHintTile(tileValue) {
 
 function updateSolveButtonVisibility() {
   if (solveBtn) {
-    solveBtn.hidden = gameCompleted;
+    solveBtn.hidden = gameCompleted || isReviewMode;
   }
   if (hintBtn) {
-    hintBtn.hidden = gameCompleted || size !== 3;
+    hintBtn.hidden = gameCompleted || isReviewMode || size !== 3;
   }
 }
 
 function applyReplayState(index) {
-  if (!replayStateKeys.length) return;
+  const displayedReplayStateKeys = getDisplayedReplayStateKeys();
+  if (!displayedReplayStateKeys.length) return;
 
-  const nextIndex = Math.max(0, Math.min(index, replayStateKeys.length - 1));
+  const nextIndex = Math.max(0, Math.min(index, displayedReplayStateKeys.length - 1));
   replayIndex = nextIndex;
-  tiles = replayStateKeys[nextIndex].split(",").map(Number);
+  tiles = displayedReplayStateKeys[nextIndex].split(",").map(Number);
+  if (isReviewMode && replayRouteMode === "player") {
+    moves = nextIndex;
+  }
   renderBoard();
   updateReplayControls();
 }
@@ -308,6 +443,15 @@ function setControlsDisabled(disabled) {
     hintBtn.disabled = disabled;
   }
   solveBtn.disabled = disabled;
+  if (reviewModeBtn) {
+    reviewModeBtn.disabled = disabled || (!(gameCompleted || isReviewMode) && !replayStateKeys.length);
+  }
+  if (replayRouteToggleBtn) {
+    replayRouteToggleBtn.disabled = disabled || replayRouteToggleBtn.hidden;
+  }
+  if (reviewSolveBtn) {
+    reviewSolveBtn.disabled = disabled || reviewSolveBtn.hidden || replayRouteMode === "auto";
+  }
 }
 
 function renderBoard() {
@@ -394,6 +538,7 @@ function resetProgress() {
   elapsedMs = 0;
   started = false;
   gameCompleted = false;
+  clearReviewState();
   clearHintHighlight();
   clearReplayTracking();
   updateSolveButtonVisibility();
@@ -420,6 +565,12 @@ function moveTile(index, options = {}) {
 
   if (isAutoSolving && trackHistory) return false;
   if (gameCompleted) return false;
+  if (isReviewMode && replayRouteMode === "auto") {
+    if (updateMessage) {
+      setMessage("目前正在查看自動還原路徑，切回玩家路徑後才能調整自己的走法。");
+    }
+    return false;
+  }
   if (!canMove(index)) return false;
 
   const movedValue = tiles[index];
@@ -444,10 +595,18 @@ function moveTile(index, options = {}) {
 
   if (isSolved()) {
     if (updateMessage) {
-      finishGame();
+      finishGame(isReviewMode
+        ? {
+            allowRankSubmission: false,
+            customMessage: "復盤完成，這條調整後的路線不會送出成績。",
+          }
+        : {});
+      if (isReviewMode) {
+        finalizeCompletedReviewMode();
+      }
     }
   } else if (updateMessage) {
-    setMessage("");
+    setMessage(isReviewMode ? "復盤模式：你可以從目前步數重新調整路線，這局不會送出成績。" : "");
   }
 
   return true;
@@ -470,13 +629,152 @@ function newGame(options = {}) {
   renderLeaderboard();
 }
 
+async function enterReviewMode() {
+  if (!gameCompleted || replayIndex < 0 || isAutoSolving) return;
+
+  reviewSourceReplayStateKeys = [...replayStateKeys];
+  reviewSourceMoves = moves;
+  reviewSourceElapsedMs = elapsedMs;
+  reviewComparison = null;
+  replayRouteMode = "player";
+  if (reviewModeBtn) {
+    reviewModeBtn.disabled = true;
+  }
+  if (canUseAutoReplayReference()) {
+    await Promise.resolve();
+    const prepared = await prepareAutoReplayReference();
+    if (prepared) {
+      setRankUpdateStatus(`復盤參考：自動還原最佳步數 ${autoReplayStepCount} 步，可切換路徑查看。`);
+    } else {
+      setRankUpdateStatus("復盤模式中的調整不會送出排行榜成績。");
+    }
+  } else {
+    autoReplayStateKeys = [];
+    autoReplayStepCount = null;
+    setRankUpdateStatus("復盤模式中的調整不會送出排行榜成績。");
+  }
+  replayStateKeys = replayStateKeys.slice(0, replayIndex + 1);
+  replayIndex = replayStateKeys.length - 1;
+  tiles = replayStateKeys[replayIndex].split(",").map(Number);
+  moves = replayIndex;
+  stopTimer();
+  started = true;
+  gameCompleted = false;
+  isReviewMode = true;
+  resetPathTracking();
+  if (canUseAutoReplayReference() && autoReplayStepCount !== null) {
+    setRankUpdateStatus(`復盤參考：自動還原最佳步數 ${autoReplayStepCount} 步，可切換路徑查看。`);
+  } else {
+    setRankUpdateStatus("復盤模式中的調整不會送出排行榜成績。");
+  }
+  setMessage("復盤模式：你可以從目前步數重新調整路線，這局不會送出成績。");
+  setRankUpdateStatus("復盤模式中的調整不會送出排行榜成績。");
+  updateSolveButtonVisibility();
+  renderBoard();
+  updateReplayControls();
+}
+
+function exitReviewMode() {
+  if (!isReviewMode) return;
+
+  isReviewMode = false;
+  gameCompleted = true;
+  stopTimer();
+  started = false;
+
+  if (reviewSourceReplayStateKeys.length) {
+    replayStateKeys = [...reviewSourceReplayStateKeys];
+    replayIndex = replayStateKeys.length - 1;
+    tiles = replayStateKeys[replayIndex].split(",").map(Number);
+    moves = reviewSourceMoves;
+    elapsedMs = reviewSourceElapsedMs;
+  }
+
+  setMessage("已回到原本的通關路線，你也可以再次選一步重新復盤。");
+  setRankUpdateStatus("");
+  renderBoard();
+  if (reviewComparison) {
+    setMessage(`復盤成績：${reviewComparison.reviewMoves} 步（原始 ${reviewComparison.originalMoves} 步），${formatTime(reviewComparison.reviewElapsedMs)}（原始 ${formatTime(reviewComparison.originalElapsedMs)}）。`);
+    setRankUpdateStatus("復盤模式僅供檢討路線，調整後的成績不會送出排行榜。");
+  }
+  updateSolveButtonVisibility();
+  updateReplayControls();
+  reviewSourceReplayStateKeys = [];
+  reviewSourceMoves = 0;
+  reviewSourceElapsedMs = 0;
+}
+
+function finalizeCompletedReviewMode() {
+  if (!isReviewMode || !reviewComparison) return;
+
+  const shouldAdoptBetterPath = reviewComparison.reviewMoves < reviewComparison.originalMoves;
+
+  isReviewMode = false;
+  gameCompleted = true;
+  stopTimer();
+  started = false;
+
+  if (shouldAdoptBetterPath) {
+    replayIndex = replayStateKeys.length - 1;
+    tiles = replayStateKeys[replayIndex].split(",").map(Number);
+    moves = reviewComparison.reviewMoves;
+    elapsedMs = reviewComparison.reviewElapsedMs;
+    setMessage(`復盤成績：${reviewComparison.reviewMoves} 步（原始 ${reviewComparison.originalMoves} 步），已採用步數更少的新路線。`);
+  } else {
+    if (reviewSourceReplayStateKeys.length) {
+      replayStateKeys = [...reviewSourceReplayStateKeys];
+      replayIndex = replayStateKeys.length - 1;
+      tiles = replayStateKeys[replayIndex].split(",").map(Number);
+      moves = reviewSourceMoves;
+      elapsedMs = reviewSourceElapsedMs;
+    }
+    setMessage(`復盤成績：${reviewComparison.reviewMoves} 步（原始 ${reviewComparison.originalMoves} 步），已保留原本較佳的路線。`);
+  }
+
+  setRankUpdateStatus("復盤模式僅供檢討路線，調整後的成績不會送出排行榜。");
+  renderBoard();
+  updateSolveButtonVisibility();
+  updateReplayControls();
+  reviewSourceReplayStateKeys = [];
+  reviewSourceMoves = 0;
+  reviewSourceElapsedMs = 0;
+}
+
+function toggleReplayRouteMode() {
+  if (!canUseAutoReplayReference() || autoReplayStateKeys.length <= 1) return;
+
+  replayRouteMode = replayRouteMode === "auto" ? "player" : "auto";
+  const displayedReplayStateKeys = getDisplayedReplayStateKeys();
+  replayIndex = Math.max(0, Math.min(replayIndex, displayedReplayStateKeys.length - 1));
+  applyReplayState(replayIndex);
+}
+
+function solveCurrentReviewState() {
+  if (!isReviewMode) return;
+  if (replayRouteMode === "auto") {
+    setMessage("目前正在查看自動還原路徑，切回玩家路徑後才能根據當前版面求解。");
+    return;
+  }
+
+  void autoSolve();
+}
+
+function toggleReviewMode() {
+  if (isReviewMode) {
+    exitReviewMode();
+    return;
+  }
+
+  void enterReviewMode();
+}
+
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function autoSolve() {
   if (isAutoSolving || gameCompleted || isSolved()) return;
-  if (!moveHistory.length) return;
+  if (!moveHistory.length && !isReviewMode) return;
 
   usedAutoSolve = true;
   isAutoSolving = true;
@@ -545,6 +843,9 @@ async function autoSolve() {
     allowRankSubmission: false,
     customMessage: `已完成自動還原，總步數 ${moves}，時間 ${formatTime(elapsedMs)}`,
   });
+  if (isReviewMode) {
+    finalizeCompletedReviewMode();
+  }
 }
 
 function showHint() {
@@ -774,11 +1075,19 @@ function finishGame(options = {}) {
     moves,
     time: formatTime(elapsedMs),
   };
+  if (isReviewMode) {
+    reviewComparison = {
+      originalMoves: reviewSourceMoves,
+      originalElapsedMs: reviewSourceElapsedMs,
+      reviewMoves: moves,
+      reviewElapsedMs: elapsedMs,
+    };
+  }
   const message = customMessage || `完成！步數 ${result.moves}，時間 ${result.time}`;
   setMessage(message);
   captureReplayForFinishedGame(replayStates || replayStateKeys);
 
-  if (allowRankSubmission && !usedAutoSolve) {
+  if (allowRankSubmission && !usedAutoSolve && !isReviewMode) {
     void maybeSubmitRank(result);
   }
 }
@@ -880,12 +1189,12 @@ function toggleLeaderboardMode() {
 }
 
 function showPreviousReplayStep() {
-  if (!gameCompleted || replayIndex <= 0) return;
+  if ((!gameCompleted && !isReviewMode) || replayIndex <= 0) return;
   applyReplayState(replayIndex - 1);
 }
 
 function showNextReplayStep() {
-  if (!gameCompleted || replayIndex >= replayStateKeys.length - 1) return;
+  if ((!gameCompleted && !isReviewMode) || replayIndex >= replayStateKeys.length - 1) return;
   applyReplayState(replayIndex + 1);
 }
 
@@ -904,12 +1213,21 @@ refreshRankBtn.addEventListener("click", () => {
 toggleLeaderboardModeBtn.addEventListener("click", toggleLeaderboardMode);
 replayPrevBtn.addEventListener("click", showPreviousReplayStep);
 replayNextBtn.addEventListener("click", showNextReplayStep);
+if (replayRouteToggleBtn) {
+  replayRouteToggleBtn.addEventListener("click", toggleReplayRouteMode);
+}
+if (reviewSolveBtn) {
+  reviewSolveBtn.addEventListener("click", solveCurrentReviewState);
+}
+if (reviewModeBtn) {
+  reviewModeBtn.addEventListener("click", toggleReviewMode);
+}
 
 document.addEventListener("keydown", (event) => {
   const tagName = document.activeElement?.tagName;
   if (tagName === "INPUT" || tagName === "SELECT" || tagName === "TEXTAREA") return;
 
-  if (gameCompleted) {
+  if (gameCompleted || isReviewMode) {
     if (event.key === "ArrowLeft") {
       event.preventDefault();
       showPreviousReplayStep();

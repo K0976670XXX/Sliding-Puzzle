@@ -306,9 +306,16 @@ button:disabled {
 
 .replay-controls {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: 10px;
+}
+
+.replay-meta {
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.95rem;
 }
 
 .replay-status {
@@ -325,6 +332,18 @@ button:disabled {
   padding: 0;
   font-size: 1.25rem;
   line-height: 1;
+}
+
+.review-mode-btn {
+  min-width: 124px;
+}
+
+.replay-toggle-btn {
+  min-width: 148px;
+}
+
+.review-solve-btn {
+  min-width: 156px;
 }
 
 .status-item {
