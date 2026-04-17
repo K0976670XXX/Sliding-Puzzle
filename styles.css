@@ -334,6 +334,26 @@ button:disabled {
   line-height: 1;
 }
 
+#replayFirstBtn {
+  order: 1;
+}
+
+#replayPrevBtn {
+  order: 2;
+}
+
+#replayStatus {
+  order: 3;
+}
+
+#replayNextBtn {
+  order: 4;
+}
+
+#replayLastBtn {
+  order: 5;
+}
+
 .review-mode-btn {
   min-width: 124px;
 }

@@ -325,8 +325,10 @@ function updateReplayControls() {
   replayControlsEl.hidden = !hasReplay;
 
   if (!hasReplay) {
+    if (replayFirstBtn) replayFirstBtn.disabled = true;
     replayPrevBtn.disabled = true;
     replayNextBtn.disabled = true;
+    if (replayLastBtn) replayLastBtn.disabled = true;
     replayStatusEl.textContent = "0 / 0";
     if (autoReplayInfoEl) {
       autoReplayInfoEl.hidden = true;
@@ -345,8 +347,10 @@ function updateReplayControls() {
     return;
   }
 
+  if (replayFirstBtn) replayFirstBtn.disabled = replayIndex <= 0;
   replayPrevBtn.disabled = replayIndex <= 0;
   replayNextBtn.disabled = replayIndex >= displayedReplayStateKeys.length - 1;
+  if (replayLastBtn) replayLastBtn.disabled = replayIndex >= displayedReplayStateKeys.length - 1;
   replayStatusEl.textContent = `${replayIndex} / ${getReplayStepCount()}`;
   if (autoReplayInfoEl) {
     autoReplayInfoEl.hidden = !canUseAutoReplayReference() || autoReplayStepCount === null;
@@ -1218,8 +1222,20 @@ function showPreviousReplayStep() {
 }
 
 function showNextReplayStep() {
-  if ((!gameCompleted && !isReviewMode) || replayIndex >= replayStateKeys.length - 1) return;
+  const displayedReplayStateKeys = getDisplayedReplayStateKeys();
+  if ((!gameCompleted && !isReviewMode) || replayIndex >= displayedReplayStateKeys.length - 1) return;
   applyReplayState(replayIndex + 1);
+}
+
+function showFirstReplayStep() {
+  if ((!gameCompleted && !isReviewMode) || replayIndex <= 0) return;
+  applyReplayState(0);
+}
+
+function showLastReplayStep() {
+  const displayedReplayStateKeys = getDisplayedReplayStateKeys();
+  if ((!gameCompleted && !isReviewMode) || replayIndex >= displayedReplayStateKeys.length - 1) return;
+  applyReplayState(displayedReplayStateKeys.length - 1);
 }
 
 shuffleBtn.addEventListener("click", newGame);
@@ -1235,8 +1251,14 @@ refreshRankBtn.addEventListener("click", () => {
   void refreshLeaderboard().catch(() => {});
 });
 toggleLeaderboardModeBtn.addEventListener("click", toggleLeaderboardMode);
+if (replayFirstBtn) {
+  replayFirstBtn.addEventListener("click", showFirstReplayStep);
+}
 replayPrevBtn.addEventListener("click", showPreviousReplayStep);
 replayNextBtn.addEventListener("click", showNextReplayStep);
+if (replayLastBtn) {
+  replayLastBtn.addEventListener("click", showLastReplayStep);
+}
 if (replayRouteToggleBtn) {
   replayRouteToggleBtn.addEventListener("click", toggleReplayRouteMode);
 }
