@@ -3,7 +3,7 @@ import json
 import sys, os 
 os.chdir(sys.path[0])#將當前環境位置設為當前"檔案位置"
 
-image_num = 123
+image_num = 124
 gif_num = 3
 
 data = {

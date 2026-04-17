@@ -739,6 +739,12 @@
       "alt": "Puzzle image 122 preview"
     },
     {
+      "id": "image-123",
+      "name": "Image 123",
+      "file": "image (123).jpg",
+      "alt": "Puzzle image 123 preview"
+    },
+    {
       "id": "gif-0",
       "name": "gif 0",
       "file": "gif (0).gif",
