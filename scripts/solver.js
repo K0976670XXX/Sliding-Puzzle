@@ -934,7 +934,7 @@ function runWeightedAStarStage(startState, boardSize, layer, targetMap, lockedPo
   return null;
 }
 
-function solveFinal4x4WeightedAStar(startState, boardSize, layer, config) {
+function solveFinalWeightedAStar(startState, boardSize, layer, config) {
   const goalState = buildSolvedState(boardSize);
   const goalKey = goalState.join(",");
   const startKey = startState.join(",");
@@ -948,7 +948,12 @@ function solveFinal4x4WeightedAStar(startState, boardSize, layer, config) {
   const lockedPositions = buildLockedPositionsBeforeTopRow(layer, boardSize);
   const lockedValues = createLockedValueMap(startState, lockedPositions);
   const { goalRows, goalCols } = createGoalLookup(boardSize);
-  const weight = WEIGHTED_ASTAR_CONFIG[4]?.weight || 1.35;
+  const finalBoardSize = boardSize - layer;
+  const weight = WEIGHTED_ASTAR_CONFIG[finalBoardSize]?.weight || WEIGHTED_ASTAR_CONFIG[4]?.weight || 1.35;
+  const limits = SOLVER_LIMITS[finalBoardSize] || {
+    maxExpanded: config.finalMaxExpanded,
+    maxDurationMs: config.finalMaxDurationMs,
+  };
   const openSet = new MinHeap((left, right) => {
     if (left.f !== right.f) return left.f - right.f;
     return left.h - right.h;
@@ -983,7 +988,7 @@ function solveFinal4x4WeightedAStar(startState, boardSize, layer, config) {
     }
 
     expanded += 1;
-    if (expanded > config.finalMaxExpanded || (performance.now() - startedAt) > config.finalMaxDurationMs) {
+    if (expanded > limits.maxExpanded || (performance.now() - startedAt) > limits.maxDurationMs) {
       return null;
     }
 
@@ -1058,8 +1063,10 @@ function solveLargePuzzleLayered(startState, boardSize) {
 
   let currentState = [...startState];
   let solution = [];
+  const finalBoardSize = boardSize === 6 ? 5 : 4;
+  const finalLayer = boardSize - finalBoardSize;
 
-  for (let layer = 0; layer < boardSize - 4; layer += 1) {
+  for (let layer = 0; layer < finalLayer; layer += 1) {
     const topLocked = buildLockedPositionsBeforeTopRow(layer, boardSize);
 
     for (let col = layer; col < boardSize - 2; col += 1) {
@@ -1159,16 +1166,16 @@ function solveLargePuzzleLayered(startState, boardSize) {
     }
   }
 
-  const finalResult = solveFinal4x4WeightedAStar(currentState, boardSize, boardSize - 4, config);
+  const finalResult = solveFinalWeightedAStar(currentState, boardSize, finalLayer, config);
   if (!finalResult) {
-    return { solution: null, reason: "final-4x4-failed", method: "layered" };
+    return { solution: null, reason: `final-${finalBoardSize}x${finalBoardSize}-failed`, method: "layered" };
   }
 
   currentState = finalResult.state;
   solution = solution.concat(finalResult.moves);
 
   if (currentState.join(",") !== goalState.join(",")) {
-    return { solution: null, reason: "final-4x4-incomplete", method: "layered" };
+    return { solution: null, reason: `final-${finalBoardSize}x${finalBoardSize}-incomplete`, method: "layered" };
   }
 
   return {
