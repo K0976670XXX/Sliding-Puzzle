@@ -85,15 +85,21 @@
             <button id="solveBtn" type="button" class="success-btn">自動還原</button>
           </div>
           <div id="replayControls" class="replay-controls" hidden>
-            <button id="replayLastBtn" type="button" class="ghost-btn replay-arrow-btn" aria-label="回到結尾">&raquo;</button>
-            <button id="replayFirstBtn" type="button" class="ghost-btn replay-arrow-btn" aria-label="回到最開始">&laquo;</button>
-            <button id="replayPrevBtn" type="button" class="ghost-btn replay-arrow-btn" aria-label="上一步">&larr;</button>
-            <span id="replayStatus" class="replay-status">0 / 0</span>
-            <button id="replayNextBtn" type="button" class="ghost-btn replay-arrow-btn" aria-label="下一步">&rarr;</button>
-            <span id="autoReplayInfo" class="replay-meta" hidden>自動還原：-- 步</span>
-            <button id="replayRouteToggleBtn" type="button" class="ghost-btn replay-toggle-btn" hidden>查看自動還原</button>
-            <button id="reviewSolveBtn" type="button" class="success-btn review-solve-btn" hidden>根據當前求解</button>
-            <button id="reviewModeBtn" type="button" class="secondary-btn review-mode-btn">開始復盤</button>
+            <div class="replay-nav-row">
+              <button id="replayLastBtn" type="button" class="ghost-btn replay-arrow-btn" aria-label="回到結尾">&raquo;</button>
+              <button id="replayFirstBtn" type="button" class="ghost-btn replay-arrow-btn" aria-label="回到最開始">&laquo;</button>
+              <button id="replayPrevBtn" type="button" class="ghost-btn replay-arrow-btn" aria-label="上一步">&larr;</button>
+              <span id="replayStatus" class="replay-status">0 / 0</span>
+              <button id="replayNextBtn" type="button" class="ghost-btn replay-arrow-btn" aria-label="下一步">&rarr;</button>
+            </div>
+            <div class="replay-reference-row">
+              <span id="autoReplayInfo" class="replay-meta" hidden>自動還原：-- 步</span>
+              <button id="replayRouteToggleBtn" type="button" class="ghost-btn replay-toggle-btn" hidden>查看自動還原</button>
+            </div>
+            <div class="replay-review-row">
+              <button id="reviewSolveBtn" type="button" class="success-btn review-solve-btn" hidden>根據當前求解</button>
+              <button id="reviewModeBtn" type="button" class="secondary-btn review-mode-btn">開始復盤</button>
+            </div>
           </div>
         </section>
       </section>

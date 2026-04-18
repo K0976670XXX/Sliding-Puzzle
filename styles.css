@@ -337,11 +337,30 @@ button:disabled {
 }
 
 .replay-controls {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+}
+
+.replay-nav-row,
+.replay-reference-row,
+.replay-review-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: 10px;
+  width: 100%;
+}
+
+.replay-nav-row {
+  flex-wrap: nowrap;
+  gap: clamp(5px, 1.6vw, 10px);
+}
+
+.replay-reference-row:empty,
+.replay-review-row:empty {
+  display: none;
 }
 
 .replay-meta {
@@ -351,18 +370,19 @@ button:disabled {
 }
 
 .replay-status {
-  min-width: 68px;
+  min-width: 58px;
   text-align: center;
   color: var(--muted);
   font-weight: 700;
+  font-size: clamp(0.82rem, 2.8vw, 0.95rem);
 }
 
 .replay-arrow-btn {
-  width: 46px;
-  min-width: 46px;
-  height: 46px;
+  width: clamp(34px, 9.5vw, 46px);
+  min-width: clamp(34px, 9.5vw, 46px);
+  height: clamp(34px, 9.5vw, 46px);
   padding: 0;
-  font-size: 1.25rem;
+  font-size: clamp(0.95rem, 3.8vw, 1.25rem);
   line-height: 1;
 }
 
