@@ -162,7 +162,7 @@ function getPlayerName() {
 }
 
 function getCompletionCountSizes() {
-  return new Set([4, 5, 6]);
+  return new Set([3, 4, 5, 6]);
 }
 
 function normalizeCountValue(value) {
