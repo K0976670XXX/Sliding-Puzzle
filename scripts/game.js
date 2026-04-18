@@ -258,6 +258,15 @@ function addNameUsed(name) {
   return writeNamesUsed(names);
 }
 
+function logStoredRankMetadata(context = "current") {
+  console.log("[Sliding Puzzle] stored rank metadata", {
+    context,
+    size: `${size}x${size}`,
+    count: getCompletionCount(size),
+    names_used: readNamesUsed(),
+  });
+}
+
 function getCurrentImage() {
   return imageCatalog[currentImageIndex] || null;
 }
@@ -1232,6 +1241,7 @@ function finishGame(options = {}) {
       : getCompletionCount(size),
     namesUsed,
   };
+  logStoredRankMetadata("finish-game");
 
   if (isReviewMode) {
     reviewComparison = {
@@ -1315,6 +1325,7 @@ function savePlayerName() {
   if (name) {
     localStorage.setItem(STORAGE_KEYS.playerName, name);
     addNameUsed(name);
+    logStoredRankMetadata("save-player-name");
     setRankUpdateStatus("玩家名稱已儲存。");
   } else {
     localStorage.removeItem(STORAGE_KEYS.playerName);
@@ -1329,6 +1340,7 @@ function loadSavedPlayerName() {
   if (savedName) {
     playerNameInput.value = savedName;
     addNameUsed(savedName);
+    logStoredRankMetadata("load-saved-player-name");
   }
 }
 
