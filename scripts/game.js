@@ -161,6 +161,103 @@ function getPlayerName() {
   return playerNameInput.value.trim();
 }
 
+function getCompletionCountSizes() {
+  return new Set([4, 5, 6]);
+}
+
+function normalizeCountValue(value) {
+  const count = Number(value);
+  return Number.isFinite(count) && count > 0 ? Math.floor(count) : 0;
+}
+
+function normalizeCompletionCounts(rawCounts) {
+  const validSizes = getCompletionCountSizes();
+  const counts = {};
+
+  for (const boardSize of validSizes) {
+    counts[boardSize] = normalizeCountValue(rawCounts?.[boardSize]);
+  }
+
+  for (const value of Object.values(rawCounts || {})) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+
+    for (const boardSize of validSizes) {
+      counts[boardSize] += normalizeCountValue(value[boardSize]);
+    }
+  }
+
+  return counts;
+}
+
+function readCompletionCounts() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEYS.completionCounts) || "{}");
+    return normalizeCompletionCounts(parsed && typeof parsed === "object" ? parsed : {});
+  } catch (error) {
+    console.warn("Failed to read completion counts from localStorage.", error);
+    return normalizeCompletionCounts({});
+  }
+}
+
+function writeCompletionCounts(counts) {
+  localStorage.setItem(STORAGE_KEYS.completionCounts, JSON.stringify(normalizeCompletionCounts(counts)));
+}
+
+function getCompletionCount(boardSize = size) {
+  if (!getCompletionCountSizes().has(boardSize)) return 0;
+
+  const counts = readCompletionCounts();
+  return normalizeCountValue(counts[boardSize]);
+}
+
+function incrementCompletionCount(boardSize = size) {
+  if (!getCompletionCountSizes().has(boardSize)) return 0;
+
+  const counts = readCompletionCounts();
+  const nextCount = getCompletionCount(boardSize) + 1;
+
+  counts[boardSize] = nextCount;
+  writeCompletionCounts(counts);
+  return nextCount;
+}
+
+function readNamesUsed() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEYS.namesUsed) || "[]");
+    if (!Array.isArray(parsed)) return [];
+
+    return [...new Set(
+      parsed
+        .map((name) => String(name || "").trim())
+        .filter(Boolean),
+    )];
+  } catch (error) {
+    console.warn("Failed to read used names from localStorage.", error);
+    return [];
+  }
+}
+
+function writeNamesUsed(names) {
+  const normalizedNames = [...new Set(
+    names
+      .map((name) => String(name || "").trim())
+      .filter(Boolean),
+  )];
+  localStorage.setItem(STORAGE_KEYS.namesUsed, JSON.stringify(normalizedNames));
+  return normalizedNames;
+}
+
+function addNameUsed(name) {
+  const normalizedName = String(name || "").trim();
+  if (!normalizedName) return readNamesUsed();
+
+  const names = readNamesUsed();
+  if (!names.includes(normalizedName)) {
+    names.push(normalizedName);
+  }
+  return writeNamesUsed(names);
+}
+
 function getCurrentImage() {
   return imageCatalog[currentImageIndex] || null;
 }
@@ -1031,6 +1128,8 @@ async function maybeSubmitRank(result) {
     playerName,
     moves: finalMoves,
     time: finalTime,
+    count: completionCount = getCompletionCount(size),
+    namesUsed = readNamesUsed(),
   } = result;
 
   if (!playerName) {
@@ -1076,6 +1175,8 @@ async function maybeSubmitRank(result) {
         name: playerName,
         Steps: finalMoves,
         Time: finalTime,
+        count: completionCount,
+        names_used: namesUsed,
       },
     },
   };
@@ -1119,11 +1220,19 @@ function finishGame(options = {}) {
   stopTimer();
   updateSolveButtonVisibility();
 
+  const playerName = getPlayerName();
+  const shouldTrackCompletion = allowRankSubmission && !usedAutoSolve && !isReviewMode;
+  const namesUsed = playerName ? addNameUsed(playerName) : readNamesUsed();
   const result = {
-    playerName: getPlayerName(),
+    playerName,
     moves,
     time: formatTime(elapsedMs),
+    count: shouldTrackCompletion
+      ? incrementCompletionCount(size)
+      : getCompletionCount(size),
+    namesUsed,
   };
+
   if (isReviewMode) {
     reviewComparison = {
       originalMoves: reviewSourceMoves,
@@ -1205,6 +1314,7 @@ function savePlayerName() {
 
   if (name) {
     localStorage.setItem(STORAGE_KEYS.playerName, name);
+    addNameUsed(name);
     setRankUpdateStatus("玩家名稱已儲存。");
   } else {
     localStorage.removeItem(STORAGE_KEYS.playerName);
@@ -1218,6 +1328,7 @@ function loadSavedPlayerName() {
   const savedName = localStorage.getItem(STORAGE_KEYS.playerName);
   if (savedName) {
     playerNameInput.value = savedName;
+    addNameUsed(savedName);
   }
 }
 

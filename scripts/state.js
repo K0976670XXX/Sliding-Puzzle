@@ -32,6 +32,8 @@ const STORAGE_KEYS = {
   imageId: "sliding-puzzle-image-id",
   pendingImageId: "sliding-puzzle-pending-image-id",
   pendingSize: "sliding-puzzle-pending-size",
+  completionCounts: "sliding-puzzle-completion-counts",
+  namesUsed: "sliding-puzzle-names-used",
   leaderboardMode: "sliding-puzzle-leaderboard-mode",
 };
 const LEADERBOARD_URL = "https://jsonhosting.com/api/json/d6856351/raw";
