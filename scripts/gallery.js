@@ -10,6 +10,7 @@ const selectedTitleEl = document.getElementById("selectedTitle");
 const selectedDescriptionEl = document.getElementById("selectedDescription");
 const playSelectedBtn = document.getElementById("playSelectedBtn");
 const downloadSelectedBtn = document.getElementById("downloadSelectedBtn");
+const shareLineBtn = document.getElementById("shareLineBtn");
 
 const scriptUrl = document.currentScript?.src
   ? new URL(document.currentScript.src, window.location.href)
@@ -62,6 +63,12 @@ function buildPlayUrl(media) {
   return playUrl.href;
 }
 
+function buildLineShareUrl(media) {
+  const shareUrl = new URL("https://social-plugins.line.me/lineit/share");
+  shareUrl.searchParams.set("url", media.src);
+  return shareUrl.href;
+}
+
 function getGridColumnCount() {
   const computedColumns = getComputedStyle(mediaGridEl).gridTemplateColumns;
   if (!computedColumns) return 1;
@@ -99,6 +106,8 @@ function updateSelectedMedia() {
     playSelectedBtn.href = new URL("index.html", appRootUrl).href;
     downloadSelectedBtn.removeAttribute("href");
     downloadSelectedBtn.removeAttribute("download");
+    shareLineBtn.href = "#";
+    shareLineBtn.hidden = true;
     return;
   }
 
@@ -110,6 +119,8 @@ function updateSelectedMedia() {
   playSelectedBtn.href = buildPlayUrl(media);
   downloadSelectedBtn.href = media.src;
   downloadSelectedBtn.download = media.file;
+  shareLineBtn.href = buildLineShareUrl(media);
+  shareLineBtn.hidden = false;
   mediaDetailCardEl.hidden = false;
   positionDetailCard();
 }

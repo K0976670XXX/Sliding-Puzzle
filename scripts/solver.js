@@ -931,7 +931,7 @@ function runWeightedAStarStage(startState, boardSize, layer, targetMap, lockedPo
   return null;
 }
 
-function solveFinal3x3Bfs(startState, boardSize, layer, config) {
+function solveFinal4x4WeightedAStar(startState, boardSize, layer, config) {
   const goalState = buildSolvedState(boardSize);
   const goalKey = goalState.join(",");
   const startKey = startState.join(",");
@@ -944,25 +944,37 @@ function solveFinal3x3Bfs(startState, boardSize, layer, config) {
 
   const lockedPositions = buildLockedPositionsBeforeTopRow(layer, boardSize);
   const lockedValues = createLockedValueMap(startState, lockedPositions);
-  const queue = [{
-    state: [...startState],
-    key: startKey,
-    zeroIndex: startState.indexOf(0),
-    lastMovedTile: null,
-  }];
+  const { goalRows, goalCols } = createGoalLookup(boardSize);
+  const weight = WEIGHTED_ASTAR_CONFIG[4]?.weight || 1.35;
+  const openSet = new MinHeap((left, right) => {
+    if (left.f !== right.f) return left.f - right.f;
+    return left.h - right.h;
+  });
   const parentByKey = new Map([[startKey, null]]);
   const moveByKey = new Map();
-  let head = 0;
+  const stateByKey = new Map([[startKey, [...startState]]]);
+  const bestCostByKey = new Map([[startKey, 0]]);
   let expanded = 0;
   const startedAt = performance.now();
+  const startH = getWeightedAStarHeuristic(startState, boardSize, goalRows, goalCols);
 
-  while (head < queue.length) {
-    const current = queue[head];
-    head += 1;
+  openSet.push({
+    key: startKey,
+    zeroIndex: startState.indexOf(0),
+    g: 0,
+    h: startH,
+    f: startH * weight,
+  });
+
+  while (openSet.size > 0) {
+    const current = openSet.pop();
+    if (!current) break;
+
+    if (current.g !== bestCostByKey.get(current.key)) continue;
 
     if (current.key === goalKey) {
       return {
-        state: current.state,
+        state: stateByKey.get(current.key) || goalState,
         moves: reconstructSolution(current.key, parentByKey, moveByKey),
       };
     }
@@ -972,29 +984,40 @@ function solveFinal3x3Bfs(startState, boardSize, layer, config) {
       return null;
     }
 
-    const neighborIndexes = getNeighborsForSize(current.zeroIndex, boardSize);
+    const currentState = stateByKey.get(current.key);
+    if (!currentState) continue;
+
+    const neighborIndexes = getNeighborsForSize(current.zeroIndex, boardSize)
+      .map((tileIndex) => {
+        const movedTile = currentState[tileIndex];
+        const nextState = [...currentState];
+        [nextState[current.zeroIndex], nextState[tileIndex]] = [nextState[tileIndex], nextState[current.zeroIndex]];
+        const nextH = getWeightedAStarHeuristic(nextState, boardSize, goalRows, goalCols);
+        return { tileIndex, movedTile, nextState, nextH };
+      })
+      .sort((left, right) => left.nextH - right.nextH);
+
     for (const tileIndex of neighborIndexes) {
-      if (!isIndexInActiveArea(tileIndex, layer, boardSize)) continue;
-      if (lockedPositions.has(tileIndex)) continue;
-
-      const movedTile = current.state[tileIndex];
-      if (current.lastMovedTile !== null && movedTile === current.lastMovedTile) continue;
-
-      const nextState = [...current.state];
-      [nextState[current.zeroIndex], nextState[tileIndex]] = [nextState[tileIndex], nextState[current.zeroIndex]];
+      const { tileIndex: nextTileIndex, movedTile, nextState, nextH } = tileIndex;
+      if (!isIndexInActiveArea(nextTileIndex, layer, boardSize)) continue;
+      if (lockedPositions.has(nextTileIndex)) continue;
 
       if (!isLockedStateValid(nextState, lockedValues)) continue;
 
       const nextKey = nextState.join(",");
-      if (parentByKey.has(nextKey)) continue;
+      const nextG = current.g + 1;
+      if (nextG >= (bestCostByKey.get(nextKey) ?? Infinity)) continue;
 
+      bestCostByKey.set(nextKey, nextG);
       parentByKey.set(nextKey, current.key);
       moveByKey.set(nextKey, movedTile);
-      queue.push({
-        state: nextState,
+      stateByKey.set(nextKey, nextState);
+      openSet.push({
         key: nextKey,
-        zeroIndex: tileIndex,
-        lastMovedTile: movedTile,
+        zeroIndex: nextTileIndex,
+        g: nextG,
+        h: nextH,
+        f: nextG + (nextH * weight),
       });
     }
   }
@@ -1033,7 +1056,7 @@ function solveLargePuzzleLayered(startState, boardSize) {
   let currentState = [...startState];
   let solution = [];
 
-  for (let layer = 0; layer < boardSize - 3; layer += 1) {
+  for (let layer = 0; layer < boardSize - 4; layer += 1) {
     const topLocked = buildLockedPositionsBeforeTopRow(layer, boardSize);
 
     for (let col = layer; col < boardSize - 2; col += 1) {
@@ -1133,16 +1156,16 @@ function solveLargePuzzleLayered(startState, boardSize) {
     }
   }
 
-  const finalResult = solveFinal3x3Bfs(currentState, boardSize, boardSize - 3, config);
+  const finalResult = solveFinal4x4WeightedAStar(currentState, boardSize, boardSize - 4, config);
   if (!finalResult) {
-    return { solution: null, reason: "final-3x3-failed", method: "layered" };
+    return { solution: null, reason: "final-4x4-failed", method: "layered" };
   }
 
   currentState = finalResult.state;
   solution = solution.concat(finalResult.moves);
 
   if (currentState.join(",") !== goalState.join(",")) {
-    return { solution: null, reason: "final-3x3-incomplete", method: "layered" };
+    return { solution: null, reason: "final-4x4-incomplete", method: "layered" };
   }
 
   return {
