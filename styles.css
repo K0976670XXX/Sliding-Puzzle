@@ -803,6 +803,26 @@ button:disabled {
   align-content: start;
 }
 
+.gallery-size-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  padding: 8px 10px;
+  border: 1px solid #e2cfb4;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.gallery-size-picker select {
+  min-width: 96px;
+  padding: 8px 30px 8px 10px;
+  border-radius: 10px;
+}
+
 @media (max-width: 960px) {
   .spotlight-grid,
   .media-detail-layout {

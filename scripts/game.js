@@ -174,6 +174,25 @@ function getRequestedImageId() {
   return pendingImageId ? pendingImageId.trim() : "";
 }
 
+function getRequestedSize() {
+  const params = new URLSearchParams(window.location.search);
+  const querySize = Number(params.get("size"));
+  if ([3, 4, 5, 6].includes(querySize)) return querySize;
+
+  const pendingSize = Number(localStorage.getItem(STORAGE_KEYS.pendingSize));
+  return [3, 4, 5, 6].includes(pendingSize) ? pendingSize : null;
+}
+
+function applyRequestedSizeSelection() {
+  const requestedSize = getRequestedSize();
+  localStorage.removeItem(STORAGE_KEYS.pendingSize);
+
+  if (!requestedSize) return false;
+  sizeSelect.value = String(requestedSize);
+  size = requestedSize;
+  return true;
+}
+
 function setCurrentImageById(imageId, { rerender = true } = {}) {
   const nextIndex = imageCatalog.findIndex((item) => item.id === imageId);
   if (nextIndex === -1) return false;
@@ -1308,6 +1327,7 @@ document.addEventListener("keydown", (event) => {
 async function initialize() {
   loadSavedPlayerName();
   await loadImageCatalog();
+  applyRequestedSizeSelection();
   const hasRequestedImage = applyRequestedImageSelection({ rerender: false });
   newGame({ preserveImage: hasRequestedImage });
   updateLeaderboardModeButton();

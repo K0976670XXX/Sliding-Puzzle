@@ -1,5 +1,6 @@
 const GALLERY_MANIFEST_PATH = "image/images.json";
 const GALLERY_PENDING_IMAGE_KEY = "sliding-puzzle-pending-image-id";
+const GALLERY_PENDING_SIZE_KEY = "sliding-puzzle-pending-size";
 
 const mediaGridEl = document.getElementById("mediaGrid");
 const mediaDetailCardEl = document.getElementById("mediaDetailCard");
@@ -8,6 +9,7 @@ const selectedPreviewEl = document.getElementById("selectedPreview");
 const selectedTypeEl = document.getElementById("selectedType");
 const selectedTitleEl = document.getElementById("selectedTitle");
 const selectedDescriptionEl = document.getElementById("selectedDescription");
+const playSizeSelect = document.getElementById("playSizeSelect");
 const playSelectedBtn = document.getElementById("playSelectedBtn");
 const downloadSelectedBtn = document.getElementById("downloadSelectedBtn");
 const shareLineBtn = document.getElementById("shareLineBtn");
@@ -57,9 +59,15 @@ function getSelectedMedia() {
   return mediaCatalog.find((item) => item.id === selectedMediaId) || null;
 }
 
+function getSelectedPlaySize() {
+  const selectedSize = Number(playSizeSelect?.value);
+  return [3, 4, 5, 6].includes(selectedSize) ? selectedSize : 3;
+}
+
 function buildPlayUrl(media) {
   const playUrl = new URL("index.html", appRootUrl);
   playUrl.searchParams.set("image", media.id);
+  playUrl.searchParams.set("size", String(getSelectedPlaySize()));
   return playUrl.href;
 }
 
@@ -210,6 +218,13 @@ playSelectedBtn.addEventListener("click", () => {
   const media = getSelectedMedia();
   if (!media) return;
   localStorage.setItem(GALLERY_PENDING_IMAGE_KEY, media.id);
+  localStorage.setItem(GALLERY_PENDING_SIZE_KEY, String(getSelectedPlaySize()));
+});
+
+playSizeSelect?.addEventListener("change", () => {
+  const media = getSelectedMedia();
+  if (!media) return;
+  playSelectedBtn.href = buildPlayUrl(media);
 });
 
 window.addEventListener("resize", () => {
