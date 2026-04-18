@@ -103,6 +103,9 @@ const WEIGHTED_ASTAR_CONFIG = {
   4: {
     weight: 1.35,
   },
+  5: {
+    weight: 1.85,
+  },
 };
 
 function createGoalLookup(boardSize) {
@@ -1182,7 +1185,7 @@ function findShortestSolution(startState, boardSize, options = {}) {
     return solveWithBfs(startState, boardSize);
   }
 
-  if (boardSize === 4) {
+  if (boardSize === 4 || boardSize === 5) {
     return solveWithWeightedAStar(startState, boardSize);
   }
 

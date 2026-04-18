@@ -42,6 +42,7 @@ const LEADERBOARD_MODES = {
 const SOLVER_LIMITS = {
   3: { maxExpanded: 50000, maxDurationMs: 3000 },
   4: { maxExpanded: 8000000, maxDurationMs: 60000 },
+  5: { maxExpanded: 10000000, maxDurationMs: 60000 },
 };
 
 let size = Number(sizeSelect.value);

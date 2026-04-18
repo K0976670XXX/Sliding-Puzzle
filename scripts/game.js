@@ -822,6 +822,8 @@ async function autoSolve() {
   if (solution) {
     if (shortestResult.method === "bfs") {
       solvingMessage = "3x3 使用 BFS 找到最佳解，正在自動還原...";
+    } else if (shortestResult.method === "weighted-a*" && size === 5) {
+      solvingMessage = "5x5 使用 Weighted A* + Linear Conflict 搜尋中，正在自動還原...";
     } else if (shortestResult.method === "weighted-a*") {
       solvingMessage = "4x4 使用 Weighted A* + Linear Conflict 搜尋中，正在自動還原...";
     } else if (shortestResult.method === "layered") {
