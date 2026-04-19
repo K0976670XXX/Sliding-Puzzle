@@ -37,10 +37,12 @@ const STORAGE_KEYS = {
   leaderboardMode: "sliding-puzzle-leaderboard-mode",
 };
 const LEADERBOARD_URL = "https://jsonhosting.com/api/json/d6856351/raw";
+const PLAY_COUNT_LEADERBOARD_URL = "https://jsonhosting.com/api/json/dad04715/raw";
 const RANK_UPDATE_URL = "https://elaina-k0806-790289487246.asia-east1.run.app/webhook";
 const LEADERBOARD_MODES = {
   steps: "steps",
   speed: "speed",
+  playCount: "play-count",
 };
 const SOLVER_LIMITS = {
   3: { maxExpanded: 50000, maxDurationMs: 3000 },
@@ -76,6 +78,8 @@ let replayRouteMode = "player";
 let imageCatalog = [];
 let currentImageIndex = 0;
 let leaderboardData = {};
-let leaderboardMode = localStorage.getItem(STORAGE_KEYS.leaderboardMode) === LEADERBOARD_MODES.speed
-  ? LEADERBOARD_MODES.speed
+let playCountLeaderboardData = {};
+const savedLeaderboardMode = localStorage.getItem(STORAGE_KEYS.leaderboardMode);
+let leaderboardMode = Object.values(LEADERBOARD_MODES).includes(savedLeaderboardMode)
+  ? savedLeaderboardMode
   : LEADERBOARD_MODES.steps;

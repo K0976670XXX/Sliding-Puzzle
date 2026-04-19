@@ -93,6 +93,10 @@ function setRankUpdateStatus(text = "") {
 }
 
 function getRankType(mode = leaderboardMode) {
+  if (mode === LEADERBOARD_MODES.playCount) {
+    return `${size}x${size}`;
+  }
+
   return mode === LEADERBOARD_MODES.speed
     ? `${size}x${size}_Rank_speed`
     : `${size}x${size}_Rank`;
@@ -103,11 +107,20 @@ function getSubmissionRankType() {
 }
 
 function getLeaderboardModeLabel(mode = leaderboardMode) {
-  return mode === LEADERBOARD_MODES.speed ? "速度榜" : "步數榜";
+  if (mode === LEADERBOARD_MODES.speed) return "速度榜";
+  if (mode === LEADERBOARD_MODES.playCount) return "遊玩次數榜";
+  return "步數榜";
+}
+
+function getNextLeaderboardMode() {
+  if (leaderboardMode === LEADERBOARD_MODES.steps) return LEADERBOARD_MODES.speed;
+  if (leaderboardMode === LEADERBOARD_MODES.speed) return LEADERBOARD_MODES.playCount;
+  return LEADERBOARD_MODES.steps;
 }
 
 function updateLeaderboardModeButton() {
-  const nextModeLabel = leaderboardMode === LEADERBOARD_MODES.steps ? "速度榜" : "步數榜";
+  const nextMode = getNextLeaderboardMode();
+  const nextModeLabel = getLeaderboardModeLabel(nextMode);
   toggleLeaderboardModeBtn.textContent = `查看${nextModeLabel}`;
 }
 
@@ -1031,7 +1044,33 @@ function normalizeRankEntries(entries) {
     .filter((entry) => entry.name && Number.isFinite(entry.Steps));
 }
 
+function normalizePlayCountEntries(entries) {
+  if (!Array.isArray(entries)) return [];
+
+  return entries
+    .filter((entry) => entry && typeof entry === "object")
+    .map((entry) => ({
+      name: String(entry.name || "").trim(),
+      count: normalizeCountValue(entry.count),
+      names_used: Array.isArray(entry.names_used)
+        ? [...new Set(
+            entry.names_used
+              .map((name) => String(name || "").trim())
+              .filter(Boolean),
+          )]
+        : [],
+    }))
+    .filter((entry) => entry.name && Number.isFinite(entry.count));
+}
+
 function sortRankEntries(entries, mode = leaderboardMode) {
+  if (mode === LEADERBOARD_MODES.playCount) {
+    return [...entries].sort((left, right) => {
+      if (right.count !== left.count) return right.count - left.count;
+      return left.name.localeCompare(right.name, "zh-Hant");
+    });
+  }
+
   return [...entries].sort((left, right) => {
     if (mode === LEADERBOARD_MODES.speed) {
       const timeDifference = parseTimeToMilliseconds(left.Time) - parseTimeToMilliseconds(right.Time);
@@ -1050,7 +1089,10 @@ function sortRankEntries(entries, mode = leaderboardMode) {
 function renderLeaderboard() {
   const rankType = getRankType();
   const currentName = getPlayerName();
-  const entries = sortRankEntries(normalizeRankEntries(leaderboardData[rankType]), leaderboardMode);
+  const isPlayCountMode = leaderboardMode === LEADERBOARD_MODES.playCount;
+  const entries = isPlayCountMode
+    ? sortRankEntries(normalizePlayCountEntries(playCountLeaderboardData[rankType]), leaderboardMode)
+    : sortRankEntries(normalizeRankEntries(leaderboardData[rankType]), leaderboardMode);
 
   leaderboardListEl.innerHTML = "";
 
@@ -1064,7 +1106,13 @@ function renderLeaderboard() {
       const item = document.createElement("li");
       item.className = "leaderboard-item";
 
-      if (currentName && entry.name === currentName) {
+      if (
+        currentName
+        && (
+          entry.name === currentName
+          || (isPlayCountMode && entry.names_used.includes(currentName))
+        )
+      ) {
         item.classList.add("current-player");
       }
 
@@ -1081,6 +1129,10 @@ function renderLeaderboard() {
 
       metaEl.className = "leaderboard-meta";
       metaEl.textContent = `步數 ${entry.Steps} ｜ 時間 ${entry.Time}`;
+
+      if (isPlayCountMode) {
+        metaEl.textContent = `遊玩次數 ${entry.count} ｜ 使用過名稱 ${entry.names_used.length ? entry.names_used.join("、") : "無"}`;
+      }
 
       infoWrap.appendChild(nameEl);
       infoWrap.appendChild(metaEl);
@@ -1104,6 +1156,16 @@ async function fetchLeaderboardData() {
   return payload?.Sliding_Puzzle || {};
 }
 
+async function fetchPlayCountLeaderboardData() {
+  const response = await fetch(PLAY_COUNT_LEADERBOARD_URL, { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error(`遊玩次數榜讀取失敗：${response.status}`);
+  }
+
+  const payload = await response.json();
+  return payload?.Sliding_Puzzle_play_count || {};
+}
+
 async function refreshLeaderboard({ silent = false } = {}) {
   if (!silent) {
     leaderboardStatusEl.textContent = "排行榜讀取中...";
@@ -1111,6 +1173,12 @@ async function refreshLeaderboard({ silent = false } = {}) {
 
   try {
     leaderboardData = await fetchLeaderboardData();
+    try {
+      playCountLeaderboardData = await fetchPlayCountLeaderboardData();
+    } catch (playCountError) {
+      console.warn(playCountError);
+      playCountLeaderboardData = {};
+    }
     renderLeaderboard();
     return leaderboardData;
   } catch (error) {
@@ -1137,8 +1205,6 @@ async function maybeSubmitRank(result) {
     playerName,
     moves: finalMoves,
     time: finalTime,
-    count: completionCount = getCompletionCount(size),
-    namesUsed = readNamesUsed(),
   } = result;
 
   if (!playerName) {
@@ -1184,8 +1250,6 @@ async function maybeSubmitRank(result) {
         name: playerName,
         Steps: finalMoves,
         Time: finalTime,
-        count: completionCount,
-        names_used: namesUsed,
       },
     },
   };
@@ -1212,6 +1276,46 @@ async function maybeSubmitRank(result) {
   } catch (error) {
     console.error(error);
     setRankUpdateStatus("榜單更新失敗，請稍後再試。");
+  }
+}
+
+async function submitPlayCountUpdate(result) {
+  const {
+    playerName,
+    namesUsed = readNamesUsed(),
+  } = result;
+
+  if (!playerName) return;
+
+  const payload = {
+    event: "Sliding.Puzzle",
+    content: {
+      type: "play_count",
+      data: {
+        name: playerName,
+        type: `${size}x${size}`,
+        count: 1,
+        names_used: namesUsed,
+      },
+    },
+  };
+
+  console.log("[Sliding Puzzle] submit play count", payload);
+
+  try {
+    const response = await fetch(RANK_UPDATE_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Play count update failed: ${response.status}`);
+    }
+  } catch (error) {
+    console.error("Play count update failed.", error);
   }
 }
 
@@ -1256,6 +1360,7 @@ function finishGame(options = {}) {
   captureReplayForFinishedGame(replayStates || replayStateKeys);
 
   if (allowRankSubmission && !usedAutoSolve && !isReviewMode) {
+    void submitPlayCountUpdate(result);
     void maybeSubmitRank(result);
   }
 }
@@ -1352,9 +1457,7 @@ function selectRandomImage({ rerender = true } = {}) {
 }
 
 function toggleLeaderboardMode() {
-  leaderboardMode = leaderboardMode === LEADERBOARD_MODES.steps
-    ? LEADERBOARD_MODES.speed
-    : LEADERBOARD_MODES.steps;
+  leaderboardMode = getNextLeaderboardMode();
 
   localStorage.setItem(STORAGE_KEYS.leaderboardMode, leaderboardMode);
   renderLeaderboard();
