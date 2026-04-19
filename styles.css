@@ -226,6 +226,17 @@ body {
   gap: 10px;
 }
 
+.name-history-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.name-history-row button {
+  white-space: nowrap;
+}
+
 input,
 select,
 button {
@@ -862,10 +873,15 @@ button:disabled {
   }
 
   .inline-field,
+  .name-history-row,
   .panel-header,
   .header-top {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .name-history-row {
+    grid-template-columns: 1fr;
   }
 
   .panel-actions {

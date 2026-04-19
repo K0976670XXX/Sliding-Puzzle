@@ -260,6 +260,33 @@ function writeNamesUsed(names) {
   return normalizedNames;
 }
 
+function renderUsedNameOptions() {
+  if (!playerNameSelect) return;
+
+  const currentName = getPlayerName();
+  const names = readNamesUsed();
+
+  playerNameSelect.innerHTML = "";
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = names.length ? "選擇使用過的名字" : "尚無使用過的名字";
+  playerNameSelect.appendChild(placeholder);
+
+  for (const name of names) {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    playerNameSelect.appendChild(option);
+  }
+
+  playerNameSelect.value = names.includes(currentName) ? currentName : "";
+
+  if (removeUsedNameBtn) {
+    removeUsedNameBtn.disabled = !playerNameSelect.value;
+  }
+}
+
 function addNameUsed(name) {
   const normalizedName = String(name || "").trim();
   if (!normalizedName) return readNamesUsed();
@@ -268,7 +295,23 @@ function addNameUsed(name) {
   if (!names.includes(normalizedName)) {
     names.push(normalizedName);
   }
-  return writeNamesUsed(names);
+  const nextNames = writeNamesUsed(names);
+  renderUsedNameOptions();
+  return nextNames;
+}
+
+function removeNameUsed(name) {
+  const normalizedName = String(name || "").trim();
+  if (!normalizedName) return readNamesUsed();
+
+  const nextNames = writeNamesUsed(readNamesUsed().filter((item) => item !== normalizedName));
+  if (getPlayerName() === normalizedName) {
+    playerNameInput.value = "";
+    localStorage.removeItem(STORAGE_KEYS.playerName);
+  }
+  renderUsedNameOptions();
+  renderLeaderboard();
+  return nextNames;
 }
 
 function logStoredRankMetadata(context = "current") {
@@ -1131,7 +1174,7 @@ function renderLeaderboard() {
       metaEl.textContent = `步數 ${entry.Steps} ｜ 時間 ${entry.Time}`;
 
       if (isPlayCountMode) {
-        metaEl.textContent = `遊玩次數 ${entry.count} ｜ 使用過名稱 ${entry.names_used.length ? entry.names_used.join("、") : "無"}`;
+        metaEl.textContent = `遊玩次數 ${entry.count}`;
       }
 
       infoWrap.appendChild(nameEl);
@@ -1437,7 +1480,30 @@ function savePlayerName() {
     setRankUpdateStatus("玩家名稱已清除。");
   }
 
+  renderUsedNameOptions();
   renderLeaderboard();
+}
+
+function selectUsedPlayerName() {
+  const selectedName = playerNameSelect?.value || "";
+  if (!selectedName) {
+    if (removeUsedNameBtn) removeUsedNameBtn.disabled = true;
+    return;
+  }
+
+  playerNameInput.value = selectedName;
+  localStorage.setItem(STORAGE_KEYS.playerName, selectedName);
+  renderUsedNameOptions();
+  renderLeaderboard();
+  setRankUpdateStatus(`已切換玩家名稱：${selectedName}`);
+}
+
+function removeSelectedUsedPlayerName() {
+  const selectedName = playerNameSelect?.value || getPlayerName();
+  if (!selectedName) return;
+
+  removeNameUsed(selectedName);
+  setRankUpdateStatus(`已移除使用過的名字：${selectedName}`);
 }
 
 function loadSavedPlayerName() {
@@ -1447,6 +1513,7 @@ function loadSavedPlayerName() {
     addNameUsed(savedName);
     logStoredRankMetadata("load-saved-player-name");
   }
+  renderUsedNameOptions();
 }
 
 function selectRandomImage({ rerender = true } = {}) {
@@ -1494,6 +1561,12 @@ sizeSelect.addEventListener("change", () => {
 });
 saveNameBtn.addEventListener("click", savePlayerName);
 playerNameInput.addEventListener("change", savePlayerName);
+if (playerNameSelect) {
+  playerNameSelect.addEventListener("change", selectUsedPlayerName);
+}
+if (removeUsedNameBtn) {
+  removeUsedNameBtn.addEventListener("click", removeSelectedUsedPlayerName);
+}
 refreshRankBtn.addEventListener("click", () => {
   void refreshLeaderboard().catch(() => {});
 });
