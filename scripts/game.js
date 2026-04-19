@@ -1402,8 +1402,14 @@ function finishGame(options = {}) {
   setMessage(message);
   captureReplayForFinishedGame(replayStates || replayStateKeys);
 
-  if (allowRankSubmission && !usedAutoSolve && !isReviewMode) {
+  const shouldSubmitRank = allowRankSubmission && !usedAutoSolve && !isReviewMode;
+  const shouldSubmitPlayCount = shouldSubmitRank || (playerName === "test" && usedAutoSolve && !isReviewMode);
+
+  if (shouldSubmitPlayCount) {
     void submitPlayCountUpdate(result);
+  }
+
+  if (shouldSubmitRank) {
     void maybeSubmitRank(result);
   }
 }
