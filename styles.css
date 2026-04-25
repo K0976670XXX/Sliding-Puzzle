@@ -462,7 +462,7 @@ button:disabled {
   aspect-ratio: 1;
   width: min(100%, 300px);
   margin: 0 auto;
-  border-radius: 18px;
+  border-radius: 0;
   border: 1px solid #ead8bd;
   background:
     linear-gradient(45deg, rgba(232, 215, 190, 0.35) 25%, transparent 25%),
