@@ -857,6 +857,12 @@
       "name": "gif 2",
       "file": "gif (2).gif",
       "alt": "Puzzle gif 2 preview"
+    },
+    {
+      "id": "gif-3",
+      "name": "gif 3",
+      "file": "gif (3).gif",
+      "alt": "Puzzle gif 3 preview"
     }
   ]
 }
