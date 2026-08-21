@@ -1,10 +1,17 @@
-const GALLERY_MANIFEST_PATH = "image/images.json";
+const GALLERY_MANIFEST_PATH = "https://pub-537ae23becb047dcb52311606e7a8af3.r2.dev/Sliding_Puzzle/images/directory.json";
+const GALLERY_PUBLIC_BASE_URL = "https://pub-537ae23becb047dcb52311606e7a8af3.r2.dev/";
+const GALLERY_UPLOAD_URL = "https://cloudrun-to-r2-790289487246.asia-east1.run.app/upload";
+const GALLERY_UPLOAD_FOLDER = "Sliding_Puzzle/images";
 const GALLERY_PENDING_IMAGE_KEY = "sliding-puzzle-pending-image-id";
 const GALLERY_PENDING_SIZE_KEY = "sliding-puzzle-pending-size";
 
 const mediaGridEl = document.getElementById("mediaGrid");
 const mediaDetailCardEl = document.getElementById("mediaDetailCard");
 const galleryStatusEl = document.getElementById("galleryStatus");
+const galleryUploadForm = document.getElementById("galleryUploadForm");
+const galleryImageInput = document.getElementById("galleryImageInput");
+const galleryUploadBtn = document.getElementById("galleryUploadBtn");
+const galleryUploadStatusEl = document.getElementById("galleryUploadStatus");
 const selectedPreviewEl = document.getElementById("selectedPreview");
 const selectedTypeEl = document.getElementById("selectedType");
 const selectedTitleEl = document.getElementById("selectedTitle");
@@ -28,7 +35,9 @@ function getMediaType(file) {
 }
 
 function normalizeImageManifest(manifest, manifestUrl) {
-  const images = Array.isArray(manifest)
+  const images = Array.isArray(manifest?.files)
+    ? manifest.files
+    : Array.isArray(manifest)
     ? manifest
     : Array.isArray(manifest?.images)
       ? manifest.images
@@ -36,12 +45,17 @@ function normalizeImageManifest(manifest, manifestUrl) {
 
   return images
     .map((item, index) => {
-      const file = String(item?.file || item?.src || "").trim();
+      const indexedPath = String(item?.key || item?.path || "").trim();
+      const file = String(item?.file || item?.path || item?.src || item?.name || "").trim();
       if (!file) return null;
 
-      const id = String(item?.id || `media-${index + 1}`);
+      const id = String(item?.id || indexedPath || file || `media-${index + 1}`);
       const name = String(item?.name || `素材 ${index + 1}`);
       const alt = String(item?.alt || `${name} 預覽`);
+      const imagePath = indexedPath || file;
+      const src = item?.src
+        ? new URL(item.src, manifestUrl).href
+        : new URL(imagePath, GALLERY_PUBLIC_BASE_URL).href;
 
       return {
         id,
@@ -49,7 +63,7 @@ function normalizeImageManifest(manifest, manifestUrl) {
         alt,
         file,
         type: getMediaType(file),
-        src: new URL(file, manifestUrl).href,
+        src,
       };
     })
     .filter(Boolean);
@@ -197,7 +211,8 @@ function renderMediaGrid() {
 }
 
 async function loadMediaCatalog() {
-  const manifestUrl = new URL(GALLERY_MANIFEST_PATH, appRootUrl);
+  const manifestUrl = new URL(GALLERY_MANIFEST_PATH);
+  manifestUrl.searchParams.set("t", String(Date.now()));
   const response = await fetch(manifestUrl, { cache: "no-store" });
   const payloadText = await response.text();
 
@@ -213,6 +228,92 @@ async function loadMediaCatalog() {
   const manifest = JSON.parse(payloadText);
   mediaCatalog = normalizeImageManifest(manifest, manifestUrl);
 }
+
+async function uploadImage(file) {
+  const formData = new FormData();
+  formData.append("folder", GALLERY_UPLOAD_FOLDER);
+  formData.append("file", file, file.name);
+
+  const response = await fetch(GALLERY_UPLOAD_URL, {
+    method: "POST",
+    body: formData,
+    // The upload service currently does not expose CORS response headers.
+    // The request remains a simple multipart POST, so the browser can send it.
+    mode: "no-cors",
+  });
+
+  if (response.type === "opaque") return null;
+
+  const responseText = await response.text();
+  let payload = null;
+
+  try {
+    payload = responseText ? JSON.parse(responseText) : null;
+  } catch {
+    // Keep the HTTP status as the useful error when the service returns plain text.
+  }
+
+  if (!response.ok) {
+    const detail = payload?.error || payload?.message || responseText.trim();
+    throw new Error(`圖片上傳失敗：${detail || response.status}`);
+  }
+
+  return payload;
+}
+
+function wait(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function refreshCatalogUntilUploaded(fileName) {
+  const normalizedFileName = String(fileName).trim();
+
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    await loadMediaCatalog();
+    const uploadedMedia = mediaCatalog.find((media) => {
+      const file = String(media.file).trim();
+      return file === normalizedFileName || file.endsWith(`/${normalizedFileName}`);
+    });
+
+    if (uploadedMedia) return uploadedMedia;
+    if (attempt < 5) await wait(600);
+  }
+
+  return null;
+}
+
+galleryUploadForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const file = galleryImageInput?.files?.[0];
+  if (!file) {
+    galleryUploadStatusEl.textContent = "請先選擇圖片。";
+    return;
+  }
+  if (!file.type.startsWith("image/")) {
+    galleryUploadStatusEl.textContent = "請選擇圖片或 GIF 檔案。";
+    return;
+  }
+
+  galleryUploadBtn.disabled = true;
+  galleryUploadStatusEl.textContent = "圖片上傳中...";
+
+  try {
+    const result = await uploadImage(file);
+    const uploadedMedia = await refreshCatalogUntilUploaded(file.name);
+    renderMediaGrid();
+    galleryUploadForm.reset();
+    const uploadedPath = result?.key || result?.url || file.name;
+    galleryUploadStatusEl.textContent = uploadedMedia
+      ? `上傳完成：${uploadedPath}`
+      : "已送出上傳，但索引尚未更新；請稍後重新整理圖庫。";
+    galleryStatusEl.textContent = `共載入 ${mediaCatalog.length} 個素材`;
+  } catch (error) {
+    console.error(error);
+    galleryUploadStatusEl.textContent = error.message || "圖片上傳失敗，請稍後再試。";
+  } finally {
+    galleryUploadBtn.disabled = false;
+  }
+});
 
 playSelectedBtn.addEventListener("click", () => {
   const media = getSelectedMedia();

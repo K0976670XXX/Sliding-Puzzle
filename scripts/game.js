@@ -1415,7 +1415,9 @@ function finishGame(options = {}) {
 }
 
 function normalizeImageManifest(manifest, manifestUrl) {
-  const images = Array.isArray(manifest)
+  const images = Array.isArray(manifest?.files)
+    ? manifest.files
+    : Array.isArray(manifest)
     ? manifest
     : Array.isArray(manifest?.images)
       ? manifest.images
@@ -1423,18 +1425,23 @@ function normalizeImageManifest(manifest, manifestUrl) {
 
   return images
     .map((item, index) => {
-      const file = String(item?.file || item?.src || "").trim();
+      const indexedPath = String(item?.key || item?.path || "").trim();
+      const file = String(item?.file || item?.path || item?.src || item?.name || "").trim();
       if (!file) return null;
 
-      const id = String(item?.id || `image-${index + 1}`);
+      const id = String(item?.id || indexedPath || file || `image-${index + 1}`);
       const name = String(item?.name || `圖片 ${index + 1}`);
       const alt = String(item?.alt || `${name} 原圖預覽`);
+      const imagePath = indexedPath || file;
+      const src = item?.src
+        ? new URL(item.src, manifestUrl).href
+        : new URL(imagePath, IMAGE_PUBLIC_BASE_URL).href;
 
       return {
         id,
         name,
         alt,
-        src: new URL(file, manifestUrl).href,
+        src,
       };
     })
     .filter(Boolean);
@@ -1442,12 +1449,14 @@ function normalizeImageManifest(manifest, manifestUrl) {
 
 async function loadImageCatalog() {
   const manifestUrl = new URL(IMAGE_MANIFEST_PATH, getAppBaseUrl());
+  manifestUrl.searchParams.set("t", String(Date.now()));
   const fallbackCatalog = normalizeImageManifest({
     images: [
       {
         id: "default-puzzle",
         name: "預設拼圖",
         file: IMAGE_FALLBACK_FILE,
+        src: new URL(IMAGE_FALLBACK_FILE, getAppBaseUrl()).href,
         alt: "預設拼圖原圖預覽",
       },
     ],

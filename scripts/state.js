@@ -27,7 +27,8 @@ const replayRouteToggleBtn = document.getElementById("replayRouteToggleBtn");
 const reviewSolveBtn = document.getElementById("reviewSolveBtn");
 const reviewModeBtn = document.getElementById("reviewModeBtn");
 
-const IMAGE_MANIFEST_PATH = "image/images.json";
+const IMAGE_MANIFEST_PATH = "https://pub-537ae23becb047dcb52311606e7a8af3.r2.dev/Sliding_Puzzle/images/directory.json";
+const IMAGE_PUBLIC_BASE_URL = "https://pub-537ae23becb047dcb52311606e7a8af3.r2.dev/";
 const IMAGE_FALLBACK_FILE = "default-puzzle.png";
 const STORAGE_KEYS = {
   playerName: "sliding-puzzle-player-name",

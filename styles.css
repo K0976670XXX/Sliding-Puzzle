@@ -717,6 +717,39 @@ button:disabled {
   margin-top: 22px;
 }
 
+.gallery-upload-panel {
+  margin-top: 22px;
+}
+
+.gallery-upload-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.gallery-upload-field {
+  display: grid;
+  gap: 7px;
+  min-width: min(100%, 320px);
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.gallery-upload-field input {
+  max-width: 100%;
+  padding: 9px;
+  border: 1px solid #e2cfb4;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--ink);
+}
+
+.gallery-upload-status {
+  overflow-wrap: anywhere;
+}
+
 .gallery-status {
   margin: 0;
 }

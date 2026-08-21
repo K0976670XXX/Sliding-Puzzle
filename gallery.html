@@ -23,6 +23,26 @@
       </div>
     </header>
 
+    <section class="panel gallery-upload-panel" aria-label="上傳圖片">
+      <div class="panel-header">
+        <h2>上傳圖片</h2>
+        <p class="field-hint">選擇一張圖片或 GIF，上傳後會自動加入圖庫。</p>
+      </div>
+      <form id="galleryUploadForm" class="gallery-upload-form">
+        <label class="gallery-upload-field" for="galleryImageInput">
+          <span>圖片檔案</span>
+          <input
+            id="galleryImageInput"
+            type="file"
+            accept="image/jpeg,image/png,image/gif,image/webp,image/bmp,image/avif"
+            required
+          >
+        </label>
+        <button id="galleryUploadBtn" class="button-link" type="submit">上傳圖片</button>
+      </form>
+      <p id="galleryUploadStatus" class="field-hint gallery-upload-status" aria-live="polite"></p>
+    </section>
+
     <section class="panel gallery-grid-panel" aria-label="素材列表">
       <div class="panel-header">
         <h2>全部素材</h2>
