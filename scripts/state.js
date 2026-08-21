@@ -38,8 +38,8 @@ const STORAGE_KEYS = {
   namesUsed: "sliding-puzzle-names-used",
   leaderboardMode: "sliding-puzzle-leaderboard-mode",
 };
-const LEADERBOARD_URL = "https://jsonhosting.com/api/json/d6856351/raw";
-const PLAY_COUNT_LEADERBOARD_URL = "https://jsonhosting.com/api/json/dad04715/raw";
+const LEADERBOARD_URL = "https://pub-537ae23becb047dcb52311606e7a8af3.r2.dev/Sliding_Puzzle/rank_RAW_URL.json";
+const PLAY_COUNT_LEADERBOARD_URL = "https://pub-537ae23becb047dcb52311606e7a8af3.r2.dev/Sliding_Puzzle/play_count_RAW_URL.json";
 const RANK_UPDATE_URL = "https://elaina-k0806-790289487246.asia-east1.run.app/webhook";
 const LEADERBOARD_MODES = {
   steps: "steps",
