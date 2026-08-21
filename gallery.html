@@ -48,7 +48,12 @@
         <h2>全部素材</h2>
         <p id="galleryStatus" class="field-hint gallery-status" aria-live="polite">載入中...</p>
       </div>
-      <div id="mediaGrid" class="media-grid">
+      <section class="media-category" aria-labelledby="imageCategoryTitle">
+        <div class="media-category-header">
+          <h3 id="imageCategoryTitle">圖片</h3>
+          <span id="imageMediaCount" class="field-hint media-category-count"></span>
+        </div>
+        <div id="imageMediaGrid" class="media-grid">
         <article id="mediaDetailCard" class="media-inline-detail" hidden>
           <div class="media-detail-layout">
             <div class="media-preview-frame">
@@ -90,7 +95,15 @@
             </div>
           </div>
         </article>
-      </div>
+        </div>
+      </section>
+      <section class="media-category" aria-labelledby="gifCategoryTitle">
+        <div class="media-category-header">
+          <h3 id="gifCategoryTitle">GIF</h3>
+          <span id="gifMediaCount" class="field-hint media-category-count"></span>
+        </div>
+        <div id="gifMediaGrid" class="media-grid"></div>
+      </section>
     </section>
   </main>
 

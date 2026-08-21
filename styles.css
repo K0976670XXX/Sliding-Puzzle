@@ -754,6 +754,27 @@ button:disabled {
   margin: 0;
 }
 
+.media-category + .media-category {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #ead8bd;
+}
+
+.media-category-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.media-category-header h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.media-category-count {
+  margin: 0;
+}
+
 .media-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));

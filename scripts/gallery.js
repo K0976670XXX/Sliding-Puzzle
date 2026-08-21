@@ -5,7 +5,11 @@ const GALLERY_UPLOAD_FOLDER = "Sliding_Puzzle/images";
 const GALLERY_PENDING_IMAGE_KEY = "sliding-puzzle-pending-image-id";
 const GALLERY_PENDING_SIZE_KEY = "sliding-puzzle-pending-size";
 
-const mediaGridEl = document.getElementById("mediaGrid");
+const imageMediaGridEl = document.getElementById("imageMediaGrid");
+const gifMediaGridEl = document.getElementById("gifMediaGrid");
+const mediaGridEls = [imageMediaGridEl, gifMediaGridEl];
+const imageMediaCountEl = document.getElementById("imageMediaCount");
+const gifMediaCountEl = document.getElementById("gifMediaCount");
 const mediaDetailCardEl = document.getElementById("mediaDetailCard");
 const galleryStatusEl = document.getElementById("galleryStatus");
 const galleryUploadForm = document.getElementById("galleryUploadForm");
@@ -91,8 +95,8 @@ function buildLineShareUrl(media) {
   return shareUrl.href;
 }
 
-function getGridColumnCount() {
-  const computedColumns = getComputedStyle(mediaGridEl).gridTemplateColumns;
+function getGridColumnCount(gridEl) {
+  const computedColumns = getComputedStyle(gridEl).gridTemplateColumns;
   if (!computedColumns) return 1;
 
   const columns = computedColumns.split(" ").filter(Boolean).length;
@@ -101,19 +105,22 @@ function getGridColumnCount() {
 
 function positionDetailCard() {
   if (!selectedMediaId || mediaDetailCardEl.hidden) return;
+  const selectedMedia = getSelectedMedia();
+  const selectedGrid = selectedMedia?.type === "GIF" ? gifMediaGridEl : imageMediaGridEl;
+  if (!selectedGrid) return;
 
-  const cards = [...mediaGridEl.querySelectorAll(".media-card")];
+  const cards = [...selectedGrid.querySelectorAll(".media-card")];
   const selectedIndex = cards.findIndex((card) => card.dataset.mediaId === selectedMediaId);
   if (selectedIndex === -1) return;
 
-  const columnCount = getGridColumnCount();
+  const columnCount = getGridColumnCount(selectedGrid);
   const rowEndIndex = Math.min(
     cards.length - 1,
     (Math.floor(selectedIndex / columnCount) * columnCount) + columnCount - 1,
   );
 
   const insertBeforeNode = cards[rowEndIndex + 1] || null;
-  mediaGridEl.insertBefore(mediaDetailCardEl, insertBeforeNode);
+  selectedGrid.insertBefore(mediaDetailCardEl, insertBeforeNode);
 }
 
 function updateSelectedMedia() {
@@ -150,64 +157,75 @@ function updateSelectedMedia() {
 function selectMedia(mediaId) {
   selectedMediaId = mediaId;
 
-  mediaGridEl.querySelectorAll(".media-card").forEach((button) => {
-    button.classList.toggle("active", button.dataset.mediaId === mediaId);
+  mediaGridEls.forEach((gridEl) => {
+    gridEl.querySelectorAll(".media-card").forEach((button) => {
+      button.classList.toggle("active", button.dataset.mediaId === mediaId);
+    });
   });
 
   updateSelectedMedia();
 }
 
+function createMediaCard(media) {
+  const card = document.createElement("button");
+  card.type = "button";
+  card.className = "media-card";
+  card.dataset.mediaId = media.id;
+
+  const thumb = document.createElement("img");
+  thumb.className = "media-thumb";
+  thumb.src = media.src;
+  thumb.alt = media.alt;
+  thumb.loading = "lazy";
+
+  const meta = document.createElement("div");
+  meta.className = "media-card-meta";
+
+  const title = document.createElement("strong");
+  title.textContent = media.name;
+
+  const type = document.createElement("span");
+  type.className = "media-type-badge";
+  type.textContent = media.type;
+
+  meta.appendChild(title);
+  meta.appendChild(type);
+  card.appendChild(thumb);
+  card.appendChild(meta);
+  card.addEventListener("click", () => selectMedia(media.id));
+  return card;
+}
+
+function renderMediaCategory(gridEl, mediaItems, countEl) {
+  mediaItems.forEach((media) => gridEl.appendChild(createMediaCard(media)));
+  countEl.textContent = String(mediaItems.length) + " 個";
+
+  if (mediaItems.length) return;
+
+  const emptyState = document.createElement("p");
+  emptyState.className = "leaderboard-empty";
+  emptyState.textContent = "目前沒有可顯示的素材。";
+  gridEl.appendChild(emptyState);
+}
+
 function renderMediaGrid() {
-  mediaGridEl.querySelectorAll(".media-card").forEach((card) => card.remove());
-  mediaGridEl.querySelectorAll(".leaderboard-empty").forEach((emptyState) => emptyState.remove());
+  mediaGridEls.forEach((gridEl) => {
+    gridEl.querySelectorAll(".media-card").forEach((card) => card.remove());
+    gridEl.querySelectorAll(".leaderboard-empty").forEach((emptyState) => emptyState.remove());
+  });
+
+  const imageMedia = mediaCatalog.filter((media) => media.type !== "GIF");
+  const gifMedia = mediaCatalog.filter((media) => media.type === "GIF");
+  renderMediaCategory(imageMediaGridEl, imageMedia, imageMediaCountEl);
+  renderMediaCategory(gifMediaGridEl, gifMedia, gifMediaCountEl);
 
   if (!mediaCatalog.length) {
-    const emptyState = document.createElement("p");
-    emptyState.className = "leaderboard-empty";
-    emptyState.textContent = "目前沒有可顯示的素材。";
-    mediaGridEl.appendChild(emptyState);
     mediaDetailCardEl.hidden = true;
     return;
   }
 
-  const fragment = document.createDocumentFragment();
-
-  mediaCatalog.forEach((media) => {
-    const card = document.createElement("button");
-    card.type = "button";
-    card.className = "media-card";
-    card.dataset.mediaId = media.id;
-
-    const thumb = document.createElement("img");
-    thumb.className = "media-thumb";
-    thumb.src = media.src;
-    thumb.alt = media.alt;
-    thumb.loading = "lazy";
-
-    const meta = document.createElement("div");
-    meta.className = "media-card-meta";
-
-    const title = document.createElement("strong");
-    title.textContent = media.name;
-
-    const type = document.createElement("span");
-    type.className = "media-type-badge";
-    type.textContent = media.type;
-
-    meta.appendChild(title);
-    meta.appendChild(type);
-    card.appendChild(thumb);
-    card.appendChild(meta);
-    card.addEventListener("click", () => selectMedia(media.id));
-    fragment.appendChild(card);
-  });
-
-  mediaGridEl.prepend(fragment);
-
-  const initialMedia = mediaCatalog[0];
-  if (initialMedia) {
-    selectMedia(initialMedia.id);
-  }
+  const initialMedia = getSelectedMedia() || mediaCatalog[0];
+  selectMedia(initialMedia.id);
 }
 
 async function loadMediaCatalog() {
