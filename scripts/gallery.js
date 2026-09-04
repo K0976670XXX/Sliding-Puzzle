@@ -108,7 +108,7 @@ async function shareMediaToLine(media) {
         const file = new File([blob], media.file.split("/").pop() || media.name, {
           type: blob.type || "image/*",
         });
-        const shareData = { files: [file], title: media.name, text: media.name };
+        const shareData = { files: [file] };
         if (navigator.canShare({ files: [file] })) {
           await navigator.share(shareData);
           return true;
