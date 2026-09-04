@@ -129,42 +129,126 @@ async function shareMediaToLine(media) {
   return true;
 }
 
-async function triggerDownload(media) {
-  const response = await fetch(media.src, { mode: "cors", cache: "no-store" });
-  if (!response.ok) {
-    throw new Error(`下載失敗：${response.status}`);
-  }
-
-  const blob = await response.blob();
-  const objectUrl = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = objectUrl;
-  link.download = media.file.split("/").pop() || media.name;
-  link.rel = "noopener";
-  document.body.appendChild(link);
-  try {
-    link.click();
-    // Keep the temporary URL alive briefly so slower browsers can start the
-    // download before it is released.
-    await wait(100);
-  } finally {
-    link.remove();
-    URL.revokeObjectURL(objectUrl);
-  }
+function writeUint16(view, offset, value) {
+  view.setUint16(offset, value, true);
 }
 
-function triggerDirectDownload(media) {
-  const link = document.createElement("a");
-  link.href = media.src;
-  link.download = media.file.split("/").pop() || media.name;
-  link.target = "_blank";
-  link.rel = "noopener noreferrer";
-  document.body.appendChild(link);
-  try {
-    link.click();
-  } finally {
-    link.remove();
+function writeUint32(view, offset, value) {
+  view.setUint32(offset, value >>> 0, true);
+}
+
+function calculateCrc32(bytes) {
+  let crc = 0xffffffff;
+
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0);
+    }
   }
+
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function getZipDateTime(date = new Date()) {
+  const year = Math.max(date.getFullYear(), 1980);
+  return {
+    date: ((year - 1980) << 9) | ((date.getMonth() + 1) << 5) | date.getDate(),
+    time: (date.getHours() << 11) | (date.getMinutes() << 5) | Math.floor(date.getSeconds() / 2),
+  };
+}
+
+function createZipBlob(entries) {
+  const encoder = new TextEncoder();
+  const localParts = [];
+  const centralParts = [];
+  const { date, time } = getZipDateTime();
+  let localOffset = 0;
+  let centralSize = 0;
+
+  entries.forEach(({ name, data }) => {
+    const nameBytes = encoder.encode(name);
+    const crc32 = calculateCrc32(data);
+    const localHeader = new ArrayBuffer(30);
+    const localView = new DataView(localHeader);
+    writeUint32(localView, 0, 0x04034b50);
+    writeUint16(localView, 4, 20);
+    writeUint16(localView, 6, 0x0800);
+    writeUint16(localView, 8, 0);
+    writeUint16(localView, 10, time);
+    writeUint16(localView, 12, date);
+    writeUint32(localView, 14, crc32);
+    writeUint32(localView, 18, data.byteLength);
+    writeUint32(localView, 22, data.byteLength);
+    writeUint16(localView, 26, nameBytes.byteLength);
+    writeUint16(localView, 28, 0);
+    localParts.push(localHeader, nameBytes, data);
+
+    const centralHeader = new ArrayBuffer(46);
+    const centralView = new DataView(centralHeader);
+    writeUint32(centralView, 0, 0x02014b50);
+    writeUint16(centralView, 4, 20);
+    writeUint16(centralView, 6, 20);
+    writeUint16(centralView, 8, 0x0800);
+    writeUint16(centralView, 10, 0);
+    writeUint16(centralView, 12, time);
+    writeUint16(centralView, 14, date);
+    writeUint32(centralView, 16, crc32);
+    writeUint32(centralView, 20, data.byteLength);
+    writeUint32(centralView, 24, data.byteLength);
+    writeUint16(centralView, 28, nameBytes.byteLength);
+    writeUint16(centralView, 30, 0);
+    writeUint16(centralView, 32, 0);
+    writeUint16(centralView, 34, 0);
+    writeUint16(centralView, 36, 0);
+    writeUint32(centralView, 38, 0);
+    writeUint32(centralView, 42, localOffset);
+    centralParts.push(centralHeader, nameBytes);
+
+    localOffset += localHeader.byteLength + nameBytes.byteLength + data.byteLength;
+    centralSize += centralHeader.byteLength + nameBytes.byteLength;
+  });
+
+  const endHeader = new ArrayBuffer(22);
+  const endView = new DataView(endHeader);
+  writeUint32(endView, 0, 0x06054b50);
+  writeUint16(endView, 4, 0);
+  writeUint16(endView, 6, 0);
+  writeUint16(endView, 8, entries.length);
+  writeUint16(endView, 10, entries.length);
+  writeUint32(endView, 12, centralSize);
+  writeUint32(endView, 16, localOffset);
+  writeUint16(endView, 20, 0);
+
+  return new Blob([...localParts, ...centralParts, endHeader], { type: "application/zip" });
+}
+
+function getUniqueZipName(media, usedNames) {
+  const originalName = (media.file.split("/").pop() || media.name || "image")
+    .replace(/[\\/:*?"<>|]/g, "_");
+  const extensionIndex = originalName.lastIndexOf(".");
+  const baseName = extensionIndex > 0 ? originalName.slice(0, extensionIndex) : originalName;
+  const extension = extensionIndex > 0 ? originalName.slice(extensionIndex) : "";
+  let name = originalName;
+  let suffix = 2;
+
+  while (usedNames.has(name.toLowerCase())) {
+    name = `${baseName}-${suffix}${extension}`;
+    suffix += 1;
+  }
+
+  usedNames.add(name.toLowerCase());
+  return name;
+}
+
+async function fetchZipEntry(media, usedNames) {
+  const response = await fetch(media.src, { mode: "cors", cache: "no-store" });
+  if (!response.ok) throw new Error(`下載失敗：${response.status}`);
+
+  return {
+    name: getUniqueZipName(media, usedNames),
+    data: new Uint8Array(await response.arrayBuffer()),
+  };
 }
 
 async function downloadAllMedia() {
@@ -172,38 +256,41 @@ async function downloadAllMedia() {
   isDownloadingAll = true;
   downloadAllBtn.disabled = true;
   const total = mediaCatalog.length;
-  let successCount = 0;
-  let fallbackCount = 0;
+  const entries = [];
+  const usedNames = new Set();
   let failureCount = 0;
-  galleryStatusEl.textContent = `準備下載 ${total} 個素材...`;
+  galleryStatusEl.textContent = `準備壓縮 ${total} 個素材...`;
+
   try {
-    // Fetch each file into a same-origin blob URL so browsers honor the
-    // download filename even when the source is hosted on another origin.
-    for (const media of mediaCatalog) {
+    for (let index = 0; index < mediaCatalog.length; index += 1) {
+      const media = mediaCatalog[index];
       try {
-        await triggerDownload(media);
-        successCount += 1;
+        entries.push(await fetchZipEntry(media, usedNames));
       } catch (error) {
-        // R2 必須回傳 CORS header 才能下載 Blob。若部署尚未套用 bucket
-        // 規則，仍啟動原始網址下載，避免單一 CORS 錯誤中止其餘檔案。
-        try {
-          triggerDirectDownload(media);
-          fallbackCount += 1;
-          console.warn(`Blob 無法下載 ${media.file}，已改用直接網址下載。`, error);
-        } catch (fallbackError) {
-          failureCount += 1;
-          console.warn(`Unable to download ${media.file}.`, fallbackError);
-        }
+        failureCount += 1;
+        console.warn(`Unable to add ${media.file} to the ZIP file.`, error);
       }
-      galleryStatusEl.textContent = `下載中：${successCount + fallbackCount + failureCount}/${total}`;
-      // A short pause helps browsers enqueue downloads without freezing the
-      // page and avoids overwhelming the image host.
-      await wait(120);
+      galleryStatusEl.textContent = `建立壓縮檔：${index + 1}/${total}`;
     }
-    const statusParts = [`檔案下載成功 ${successCount} 個`];
-    if (fallbackCount) statusParts.push(`直接下載 ${fallbackCount} 個`);
-    if (failureCount) statusParts.push(`失敗 ${failureCount} 個`);
-    galleryStatusEl.textContent = `下載完成：${statusParts.join("，")}`;
+
+    if (!entries.length) {
+      galleryStatusEl.textContent = "無法建立壓縮檔，請確認 R2 CORS 設定。";
+      return;
+    }
+
+    const zipUrl = URL.createObjectURL(createZipBlob(entries));
+    const link = document.createElement("a");
+    link.href = zipUrl;
+    link.download = "sliding-puzzle-images.zip";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    await wait(100);
+    URL.revokeObjectURL(zipUrl);
+
+    galleryStatusEl.textContent = failureCount
+      ? `壓縮檔已下載：包含 ${entries.length} 個，失敗 ${failureCount} 個`
+      : `壓縮檔已下載：共 ${entries.length} 個素材`;
   } finally {
     isDownloadingAll = false;
     downloadAllBtn.disabled = false;
