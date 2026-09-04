@@ -16,6 +16,7 @@ const galleryUploadForm = document.getElementById("galleryUploadForm");
 const galleryImageInput = document.getElementById("galleryImageInput");
 const galleryUploadBtn = document.getElementById("galleryUploadBtn");
 const galleryUploadStatusEl = document.getElementById("galleryUploadStatus");
+const downloadAllBtn = document.getElementById("downloadAllBtn");
 const selectedPreviewEl = document.getElementById("selectedPreview");
 const selectedTypeEl = document.getElementById("selectedType");
 const selectedTitleEl = document.getElementById("selectedTitle");
@@ -33,6 +34,7 @@ const appRootUrl = new URL("../", scriptUrl);
 let mediaCatalog = [];
 let selectedMediaId = "";
 let resizeRafId = 0;
+let isDownloadingAll = false;
 
 function getMediaType(file) {
   return String(file).toLowerCase().endsWith(".gif") ? "GIF" : "IMAGE";
@@ -93,6 +95,119 @@ function buildLineShareUrl(media) {
   const shareUrl = new URL("https://social-plugins.line.me/lineit/share");
   shareUrl.searchParams.set("url", media.src);
   return shareUrl.href;
+}
+
+async function shareMediaToLine(media) {
+  // A File share lets mobile browsers hand the image to the native share
+  // sheet (where LINE can be selected), but support varies by browser/OS.
+  if (navigator.share && navigator.canShare) {
+    try {
+      const response = await fetch(media.src, { mode: "cors", cache: "no-store" });
+      if (response.ok) {
+        const blob = await response.blob();
+        const file = new File([blob], media.file.split("/").pop() || media.name, {
+          type: blob.type || "image/*",
+        });
+        const shareData = { files: [file], title: media.name, text: media.name };
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share(shareData);
+          return true;
+        }
+      }
+    } catch (error) {
+      // AbortError means the user dismissed the native sheet. Do not open a
+      // second share UI in that case; other errors simply use the URL fallback.
+      if (error?.name === "AbortError") return false;
+      console.warn("Unable to share image file; using LINE URL sharing.", error);
+    }
+  }
+
+  const lineWindow = window.open(buildLineShareUrl(media), "_blank", "noopener,noreferrer");
+  // Popup blockers may reject a new tab after the asynchronous image fetch;
+  // navigating the current tab still gives the user a dependable fallback.
+  if (!lineWindow) window.location.assign(buildLineShareUrl(media));
+  return true;
+}
+
+async function triggerDownload(media) {
+  const response = await fetch(media.src, { mode: "cors", cache: "no-store" });
+  if (!response.ok) {
+    throw new Error(`下載失敗：${response.status}`);
+  }
+
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = media.file.split("/").pop() || media.name;
+  link.rel = "noopener";
+  document.body.appendChild(link);
+  try {
+    link.click();
+    // Keep the temporary URL alive briefly so slower browsers can start the
+    // download before it is released.
+    await wait(100);
+  } finally {
+    link.remove();
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+function triggerDirectDownload(media) {
+  const link = document.createElement("a");
+  link.href = media.src;
+  link.download = media.file.split("/").pop() || media.name;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  document.body.appendChild(link);
+  try {
+    link.click();
+  } finally {
+    link.remove();
+  }
+}
+
+async function downloadAllMedia() {
+  if (isDownloadingAll || !mediaCatalog.length) return;
+  isDownloadingAll = true;
+  downloadAllBtn.disabled = true;
+  const total = mediaCatalog.length;
+  let successCount = 0;
+  let fallbackCount = 0;
+  let failureCount = 0;
+  galleryStatusEl.textContent = `準備下載 ${total} 個素材...`;
+  try {
+    // Fetch each file into a same-origin blob URL so browsers honor the
+    // download filename even when the source is hosted on another origin.
+    for (const media of mediaCatalog) {
+      try {
+        await triggerDownload(media);
+        successCount += 1;
+      } catch (error) {
+        // R2 必須回傳 CORS header 才能下載 Blob。若部署尚未套用 bucket
+        // 規則，仍啟動原始網址下載，避免單一 CORS 錯誤中止其餘檔案。
+        try {
+          triggerDirectDownload(media);
+          fallbackCount += 1;
+          console.warn(`Blob 無法下載 ${media.file}，已改用直接網址下載。`, error);
+        } catch (fallbackError) {
+          failureCount += 1;
+          console.warn(`Unable to download ${media.file}.`, fallbackError);
+        }
+      }
+      galleryStatusEl.textContent = `下載中：${successCount + fallbackCount + failureCount}/${total}`;
+      // A short pause helps browsers enqueue downloads without freezing the
+      // page and avoids overwhelming the image host.
+      await wait(120);
+    }
+    const statusParts = [`檔案下載成功 ${successCount} 個`];
+    if (fallbackCount) statusParts.push(`直接下載 ${fallbackCount} 個`);
+    if (failureCount) statusParts.push(`失敗 ${failureCount} 個`);
+    galleryStatusEl.textContent = `下載完成：${statusParts.join("，")}`;
+  } finally {
+    isDownloadingAll = false;
+    downloadAllBtn.disabled = false;
+  }
 }
 
 function getGridColumnCount(gridEl) {
@@ -245,6 +360,7 @@ async function loadMediaCatalog() {
 
   const manifest = JSON.parse(payloadText);
   mediaCatalog = normalizeImageManifest(manifest, manifestUrl);
+  if (downloadAllBtn) downloadAllBtn.disabled = mediaCatalog.length === 0;
 }
 
 async function uploadImage(file) {
@@ -344,6 +460,16 @@ playSizeSelect?.addEventListener("change", () => {
   const media = getSelectedMedia();
   if (!media) return;
   playSelectedBtn.href = buildPlayUrl(media);
+});
+
+shareLineBtn?.addEventListener("click", async (event) => {
+  event.preventDefault();
+  const media = getSelectedMedia();
+  if (media) await shareMediaToLine(media);
+});
+
+downloadAllBtn?.addEventListener("click", () => {
+  void downloadAllMedia();
 });
 
 window.addEventListener("resize", () => {

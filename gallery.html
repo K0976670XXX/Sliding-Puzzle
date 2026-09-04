@@ -46,7 +46,10 @@
     <section class="panel gallery-grid-panel" aria-label="素材列表">
       <div class="panel-header">
         <h2>全部素材</h2>
-        <p id="galleryStatus" class="field-hint gallery-status" aria-live="polite">載入中...</p>
+        <div class="gallery-header-actions">
+          <p id="galleryStatus" class="field-hint gallery-status" aria-live="polite">載入中...</p>
+          <button id="downloadAllBtn" class="button-link button-link-secondary" type="button" disabled>一鍵全部下載</button>
+        </div>
       </div>
       <section class="media-category" aria-labelledby="imageCategoryTitle">
         <div class="media-category-header">
@@ -79,8 +82,6 @@
                   id="shareLineBtn"
                   class="line-share-link"
                   href="#"
-                  target="_blank"
-                  rel="noreferrer noopener"
                   aria-label="分享到 LINE"
                   hidden
                 >
