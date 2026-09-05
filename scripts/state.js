@@ -42,7 +42,9 @@ const STORAGE_KEYS = {
 };
 const LEADERBOARD_URL = APP_CONFIG.leaderboardUrl;
 const PLAY_COUNT_LEADERBOARD_URL = APP_CONFIG.playCountLeaderboardUrl;
-const RANK_UPDATE_URL = APP_CONFIG.rankUpdateUrl;
+const RANK_UPDATE_URL = APP_CONFIG.apiBaseUrl
+  ? new URL("webhook", `${APP_CONFIG.apiBaseUrl.replace(/\/$/, "")}/`).href
+  : "/webhook";
 const LEADERBOARD_MODES = {
   steps: "steps",
   speed: "speed",

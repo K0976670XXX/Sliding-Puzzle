@@ -5,7 +5,6 @@ window.SLIDING_PUZZLE_CONFIG = Object.freeze({
   "imagePublicBaseUrl": "https://pub-537ae23becb047dcb52311606e7a8af3.r2.dev/",
   "leaderboardUrl": "https://pub-537ae23becb047dcb52311606e7a8af3.r2.dev/Sliding_Puzzle/rank_RAW_URL.json",
   "playCountLeaderboardUrl": "https://pub-537ae23becb047dcb52311606e7a8af3.r2.dev/Sliding_Puzzle/play_count_RAW_URL.json",
-  "rankUpdateUrl": "https://elaina-k0806-790289487246.asia-east1.run.app/webhook",
   "apiBaseUrl": "",
   "galleryUploadFolder": "Sliding_Puzzle/images"
 });

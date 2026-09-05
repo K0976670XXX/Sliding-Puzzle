@@ -22,7 +22,6 @@ const values = {
   imagePublicBaseUrl: env.SLIDING_PUZZLE_IMAGE_PUBLIC_BASE_URL,
   leaderboardUrl: env.SLIDING_PUZZLE_LEADERBOARD_URL,
   playCountLeaderboardUrl: env.SLIDING_PUZZLE_PLAY_COUNT_LEADERBOARD_URL,
-  rankUpdateUrl: env.SLIDING_PUZZLE_RANK_UPDATE_URL,
   apiBaseUrl: env.SLIDING_PUZZLE_API_BASE_URL,
   galleryUploadFolder: env.SLIDING_PUZZLE_GALLERY_UPLOAD_FOLDER,
 };
