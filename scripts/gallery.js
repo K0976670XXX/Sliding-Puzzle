@@ -1,7 +1,8 @@
-const GALLERY_MANIFEST_PATH = "https://pub-537ae23becb047dcb52311606e7a8af3.r2.dev/Sliding_Puzzle/images/directory.json";
-const GALLERY_PUBLIC_BASE_URL = "https://pub-537ae23becb047dcb52311606e7a8af3.r2.dev/";
-const GALLERY_UPLOAD_URL = "https://cloudrun-to-r2-790289487246.asia-east1.run.app/upload";
-const GALLERY_UPLOAD_FOLDER = "Sliding_Puzzle/images";
+const APP_CONFIG = window.SLIDING_PUZZLE_CONFIG || {};
+const GALLERY_MANIFEST_PATH = APP_CONFIG.imageManifestUrl;
+const GALLERY_PUBLIC_BASE_URL = APP_CONFIG.imagePublicBaseUrl;
+const GALLERY_UPLOAD_URL = APP_CONFIG.galleryUploadUrl;
+const GALLERY_UPLOAD_FOLDER = APP_CONFIG.galleryUploadFolder;
 const GALLERY_PENDING_IMAGE_KEY = "sliding-puzzle-pending-image-id";
 const GALLERY_PENDING_SIZE_KEY = "sliding-puzzle-pending-size";
 

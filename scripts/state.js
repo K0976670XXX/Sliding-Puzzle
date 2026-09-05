@@ -27,8 +27,9 @@ const replayRouteToggleBtn = document.getElementById("replayRouteToggleBtn");
 const reviewSolveBtn = document.getElementById("reviewSolveBtn");
 const reviewModeBtn = document.getElementById("reviewModeBtn");
 
-const IMAGE_MANIFEST_PATH = "https://pub-537ae23becb047dcb52311606e7a8af3.r2.dev/Sliding_Puzzle/images/directory.json";
-const IMAGE_PUBLIC_BASE_URL = "https://pub-537ae23becb047dcb52311606e7a8af3.r2.dev/";
+const APP_CONFIG = window.SLIDING_PUZZLE_CONFIG || {};
+const IMAGE_MANIFEST_PATH = APP_CONFIG.imageManifestUrl;
+const IMAGE_PUBLIC_BASE_URL = APP_CONFIG.imagePublicBaseUrl;
 const IMAGE_FALLBACK_FILE = "default-puzzle.png";
 const STORAGE_KEYS = {
   playerName: "sliding-puzzle-player-name",
@@ -39,9 +40,9 @@ const STORAGE_KEYS = {
   namesUsed: "sliding-puzzle-names-used",
   leaderboardMode: "sliding-puzzle-leaderboard-mode",
 };
-const LEADERBOARD_URL = "https://pub-537ae23becb047dcb52311606e7a8af3.r2.dev/Sliding_Puzzle/rank_RAW_URL.json";
-const PLAY_COUNT_LEADERBOARD_URL = "https://pub-537ae23becb047dcb52311606e7a8af3.r2.dev/Sliding_Puzzle/play_count_RAW_URL.json";
-const RANK_UPDATE_URL = "https://elaina-k0806-790289487246.asia-east1.run.app/webhook";
+const LEADERBOARD_URL = APP_CONFIG.leaderboardUrl;
+const PLAY_COUNT_LEADERBOARD_URL = APP_CONFIG.playCountLeaderboardUrl;
+const RANK_UPDATE_URL = APP_CONFIG.rankUpdateUrl;
 const LEADERBOARD_MODES = {
   steps: "steps",
   speed: "speed",
