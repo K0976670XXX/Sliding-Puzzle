@@ -10,4 +10,4 @@ node scripts/generate-config.mjs
 
 這會更新前端目錄的 `scripts/runtime-config.js`，靜態網站部署時會載入該檔案。`.env` 已加入 `.gitignore`，不會被提交；`runtime-config.js` 則保留目前可直接部署的公開預設值。
 
-後端上傳工具會讀取自己的 `.env`；前端的 `SLIDING_PUZZLE_GALLERY_UPLOAD_URL` 只負責指定瀏覽器要呼叫的上傳 API URL。
+後端上傳工具會讀取自己的 `.env`；前端只設定 `SLIDING_PUZZLE_API_BASE_URL`，程式會自動呼叫該後端的 `/upload`。部署到正式環境時，請把它改成後端 API 的公開網址。

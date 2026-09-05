@@ -23,7 +23,7 @@ const values = {
   leaderboardUrl: env.SLIDING_PUZZLE_LEADERBOARD_URL,
   playCountLeaderboardUrl: env.SLIDING_PUZZLE_PLAY_COUNT_LEADERBOARD_URL,
   rankUpdateUrl: env.SLIDING_PUZZLE_RANK_UPDATE_URL,
-  galleryUploadUrl: env.SLIDING_PUZZLE_GALLERY_UPLOAD_URL,
+  apiBaseUrl: env.SLIDING_PUZZLE_API_BASE_URL,
   galleryUploadFolder: env.SLIDING_PUZZLE_GALLERY_UPLOAD_FOLDER,
 };
 

@@ -1,7 +1,9 @@
 const APP_CONFIG = window.SLIDING_PUZZLE_CONFIG || {};
 const GALLERY_MANIFEST_PATH = APP_CONFIG.imageManifestUrl;
 const GALLERY_PUBLIC_BASE_URL = APP_CONFIG.imagePublicBaseUrl;
-const GALLERY_UPLOAD_URL = APP_CONFIG.galleryUploadUrl;
+const GALLERY_UPLOAD_URL = APP_CONFIG.apiBaseUrl
+  ? new URL("upload", `${APP_CONFIG.apiBaseUrl.replace(/\/$/, "")}/`).href
+  : "/upload";
 const GALLERY_UPLOAD_FOLDER = APP_CONFIG.galleryUploadFolder;
 const GALLERY_PENDING_IMAGE_KEY = "sliding-puzzle-pending-image-id";
 const GALLERY_PENDING_SIZE_KEY = "sliding-puzzle-pending-size";
