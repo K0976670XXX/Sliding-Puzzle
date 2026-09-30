@@ -6,6 +6,7 @@ const outputPath = new URL("./runtime-config.js", import.meta.url);
 const env = {};
 
 try {
+  if (process.argv.includes("--skip-env-file")) throw Object.assign(new Error("Skip .env"), { code: "ENOENT" });
   const source = await readFile(envPath, "utf8");
   for (const line of source.split(/\r?\n/)) {
     const match = line.match(/^\s*([A-Z][A-Z0-9_]*)\s*=\s*(.*?)\s*$/);
@@ -14,7 +15,12 @@ try {
   }
 } catch (error) {
   if (error.code !== "ENOENT") throw error;
-  console.warn("找不到 .env，保留目前 runtime-config.js 的值。");
+  console.warn("未讀取 .env，將使用建構環境變數與既有公開設定。");
+}
+
+// Cloudflare Pages build variables override local configuration.
+for (const [key, value] of Object.entries(process.env)) {
+  if (key.startsWith("SLIDING_PUZZLE_") && value !== undefined && value !== "") env[key] = value;
 }
 
 const values = {
@@ -28,13 +34,13 @@ const values = {
 
 const current = await readFile(outputPath, "utf8").catch(() => "");
 const existing = {};
-for (const match of current.matchAll(/\s([A-Za-z][A-Za-z0-9]*):\s*("(?:\\.|[^"\\])*")/g)) {
+for (const match of current.matchAll(/\s"?([A-Za-z][A-Za-z0-9]*)"?:\s*("(?:\\.|[^"\\])*")/g)) {
   existing[match[1]] = JSON.parse(match[2]);
 }
 for (const [key, value] of Object.entries(values)) {
   if (value !== undefined && value !== "") existing[key] = value;
 }
 
-const output = `// Generated from .env by: node scripts/generate-config.mjs\n// This file contains public browser configuration, not secrets.\nwindow.SLIDING_PUZZLE_CONFIG = Object.freeze(${JSON.stringify(existing, null, 2)});\n`;
+const output = `// Generated from build environment or .env by: node scripts/generate-config.mjs\n// This file contains public browser configuration, not secrets.\nwindow.SLIDING_PUZZLE_CONFIG = Object.freeze(${JSON.stringify(existing, null, 2)});\n`;
 await writeFile(outputPath, output, "utf8");
 console.log(`已產生 ${outputPath.pathname}`);
