@@ -27,6 +27,44 @@
       <div class="changelog-list">
         <article class="changelog-entry">
           <div class="changelog-heading">
+            <h2>2026/10/02</h2>
+            <span class="changelog-badge">首頁連結更新</span>
+          </div>
+          <ul class="changelog-items">
+            <li>首頁新增「貓貓圖鑑」連結，放在 LINE 貼圖旁，方便另開分頁瀏覽</li>
+          </ul>
+        </article>
+
+        <article class="changelog-entry changelog-entry-major">
+          <div class="changelog-heading">
+            <h2>2026/10/01</h2>
+            <span class="changelog-badge">後端服務重大更新</span>
+          </div>
+          <ul class="changelog-items">
+            <li>後端服務切換至 Cloudflare Workers，統一處理排行榜、遊玩次數與圖片上傳</li>
+            <li>排行榜與遊玩次數更新改為依序處理，降低多人同時送出時資料被覆蓋的風險</li>
+            <li>圖片上傳後自動更新圖庫索引，讓新增圖片可出現在圖庫中</li>
+            <li>修正新玩家第一次通關可能重複計算遊玩次數的問題</li>
+            <li>修正前端部署設定未套用新後端網址的問題</li>
+          </ul>
+        </article>
+
+        <article class="changelog-entry changelog-entry-major">
+          <div class="changelog-heading">
+            <h2>2026/09（紀錄補登）</h2>
+            <span class="changelog-badge">圖庫、分享與下載更新</span>
+          </div>
+          <p class="field-hint">依九月存放庫紀錄補登；各功能的實際上線日未完整留存。</p>
+          <ul class="changelog-items">
+            <li>圖庫新增圖片與 GIF 上傳功能，可使用自己的圖片玩拼圖</li>
+            <li>圖庫新增「下載全部圖片（ZIP）」，將全部素材打包成一個檔案下載</li>
+            <li>支援圖片檔案分享的手機瀏覽器可開啟系統分享選單，選擇 LINE 分享圖片</li>
+            <li>圖片分享不再額外附加檔名文字；不支援檔案分享時，改用 LINE 圖片網址分享</li>
+          </ul>
+        </article>
+
+        <article class="changelog-entry">
+          <div class="changelog-heading">
             <h2>2026/04/26</h2>
             <span class="changelog-badge">遊戲體驗優化</span>
           </div>
